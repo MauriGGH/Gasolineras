@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ojo de Dios Robo Vehicular</title>
+<title>Ojo de Dios Gasolineras</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- ?v= obliga al navegador a pedir la versión nueva cuando cambian estos archivos; súbelo al modificarlos -->
-<link rel="stylesheet" href="/static/estilos.css?v=2">
+<link rel="stylesheet" href="/static/estilos.css?v=3">
 </head>
 <body>
 <!-- Secuencia de arranque: cada línea reporta una comprobación real -->
@@ -18,7 +18,7 @@
       <circle cx="60" cy="60" r="27" class="a3"/><circle cx="60" cy="60" r="8" class="a4"/>
       <path d="M60 0v18M60 102v18M0 60h18M102 60h18" class="a5"/>
     </svg>
-    <h1>OJO DE DIOS <span>/ ROBO VEHICULAR MX</span></h1>
+    <h1>OJO DE DIOS <span>/ GASOLINERAS MX</span></h1>
     <pre id="arr-log"></pre>
     <p class="nota" id="arr-nota">Clic para omitir</p>
   </div>
@@ -28,10 +28,11 @@
 
   <!-- ===== EL MAPA: ocupa toda la ventana ===== -->
   <main class="mapa" id="mapa">
-    <svg id="svg" role="img" aria-label="Mapa de México por entidad federativa, coloreado según el indicador elegido"></svg>
+    <svg id="svg" role="img" aria-label="Mapa de México por entidad federativa con gasolineras, coloreado según el indicador elegido"></svg>
     <div class="barrido" id="barrido"></div>
     <div class="trama"></div>
     <div class="aviso" id="aviso" hidden></div>
+    <div class="demo" id="demo" role="note" hidden></div>
     <div class="tip" id="tip"></div>
   </main>
 
@@ -42,11 +43,11 @@
         <circle cx="17" cy="17" r="15.5" class="i1"/><circle cx="17" cy="17" r="9" class="i2"/>
         <circle cx="17" cy="17" r="3.2" class="i3"/><path d="M17 0v6M17 28v6M0 17h6M28 17h6" class="i1"/>
       </svg>
-      <h1>OJO DE DIOS <span>/ ROBO VEHICULAR MX</span></h1>
+      <h1>OJO DE DIOS <span>/ GASOLINERAS MX</span></h1>
     </div>
     <!-- La cifra nacional es un botón: abre el panorama nacional -->
     <button type="button" class="cifra-nac" id="cifra-nac" aria-controls="panel" aria-expanded="false" data-etq="Panorama nacional">
-      <span class="eti" id="cifra-eti">Robos · nacional</span>
+      <span class="eti" id="cifra-eti">Regular · promedio nacional</span>
       <b class="num" id="cifra-val">—</b>
     </button>
   </header>
@@ -68,11 +69,11 @@
 
   <!-- ===== Línea de tiempo: franja inferior desplegable ===== -->
   <section class="franja" id="franja" aria-label="Línea de tiempo" inert>
-    <button type="button" class="btn-ico" id="play" aria-label="Reproducir la serie">▶</button>
+    <button type="button" class="btn-ico" id="play" aria-label="Reproducir la serie de precios">▶</button>
     <output id="anio-val" for="anio" class="num"></output>
     <div class="carril">
       <div class="anio-barras" id="anio-barras" aria-hidden="true"></div>
-      <input type="range" id="anio" step="1" aria-label="Año">
+      <input type="range" id="anio" step="1" aria-label="Fecha de corte">
       <div class="anio-marcas" id="anio-marcas" aria-hidden="true"></div>
     </div>
     <p class="nota" id="nota-anio"></p>
@@ -89,11 +90,15 @@
 
       <section data-vista="indicador" hidden>
         <div>
-          <div class="eti" id="eti-metrica">Indicador <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div>
+          <div class="eti" id="eti-metrica">Indicador <kbd>1</kbd>–<kbd>5</kbd></div>
           <div class="seg tres" role="group" aria-labelledby="eti-metrica" id="seg-metrica">
-            <button type="button" id="m-robos" data-m="robos" aria-pressed="true">Robos</button>
-            <button type="button" id="m-viol" data-m="viol" aria-pressed="false">% viol.</button>
-            <button type="button" id="m-recu" data-m="recu" aria-pressed="false">% recup.</button>
+            <button type="button" data-m="regular" aria-pressed="true">Regular</button>
+            <button type="button" data-m="premium" aria-pressed="false">Premium</button>
+            <button type="button" data-m="diesel" aria-pressed="false">Diésel</button>
+          </div>
+          <div class="seg dos" role="group" aria-label="Otros indicadores" id="seg-metrica-b" style="margin-top:6px">
+            <button type="button" data-m="estaciones" aria-pressed="false">Estaciones</button>
+            <button type="button" data-m="tomas" aria-pressed="false">Tomas (ref.)</button>
           </div>
         </div>
         <div>
@@ -107,11 +112,11 @@
       </section>
 
       <section data-vista="ranking" hidden>
-        <p class="nota">Clic fija la entidad · Mayús + clic la compara con la fijada.</p>
+        <p class="nota" id="rank-nota">Clic fija la entidad · Mayús + clic la compara con la fijada.</p>
         <ol class="rank" id="rank"></ol>
       </section>
 
-      <section data-vista="submarcas" hidden>
+      <section data-vista="marcas" hidden>
         <p class="nota" id="marca-msj" aria-live="polite"></p>
         <div class="modelos" id="modelos"></div>
       </section>
@@ -119,18 +124,19 @@
       <section data-vista="capas" hidden>
         <p class="nota">Lo que se dibuja sobre el mapa.</p>
         <div class="chips" id="capas">
-          <button type="button" id="c-focos" data-c="focos" aria-pressed="true">Focos municipales</button>
-          <button type="button" id="c-etiq" data-c="etiq" aria-pressed="false">Etiquetas</button>
-          <button type="button" id="c-ret" data-c="ret" aria-pressed="true">Retícula geográfica</button>
-          <button type="button" id="c-barrido" data-c="barrido" aria-pressed="true">Barrido</button>
-          <button type="button" id="c-cinta" data-c="cinta" aria-pressed="false">Cinta de datos</button>
+          <button type="button" data-c="estaciones" aria-pressed="true">Gasolineras</button>
+          <button type="button" data-c="focos" aria-pressed="true">Focos de tomas clandestinas (referencia)</button>
+          <button type="button" data-c="etiq" aria-pressed="false">Etiquetas</button>
+          <button type="button" data-c="ret" aria-pressed="true">Retícula geográfica</button>
+          <button type="button" data-c="barrido" aria-pressed="true">Barrido</button>
+          <button type="button" data-c="cinta" aria-pressed="false">Cinta de datos</button>
         </div>
       </section>
 
       <section data-vista="buscar" hidden>
         <div class="buscar">
-          <label class="eti" for="buscar">Entidad o municipio</label>
-          <input id="buscar" type="search" placeholder="Ej. Colima, Culiacán" autocomplete="off" spellcheck="false">
+          <label class="eti" for="buscar">Entidad, estación, marca o municipio</label>
+          <input id="buscar" type="search" placeholder="Ej. Jalisco, Pemex, Tula" autocomplete="off" spellcheck="false">
         </div>
         <p class="nota" id="buscar-msj" aria-live="polite"></p>
         <ul class="resultados" id="buscar-res"></ul>
@@ -142,19 +148,98 @@
         <ol class="ruta" id="patrulla-ruta"></ol>
       </section>
 
+      <section data-vista="cerca" hidden>
+        <p class="nota" id="cerca-txt">Usa tu ubicación o haz clic en el mapa. La geocerca marca el radio de búsqueda.</p>
+        <div class="seg dos">
+          <button type="button" id="cerca-gps">◎ Mi ubicación</button>
+          <button type="button" id="cerca-mapa" aria-pressed="false">✛ Elegir en el mapa</button>
+        </div>
+        <div>
+          <label class="eti" for="cerca-radio">Geocerca · radio <b class="num" id="cerca-radio-val">5 km</b></label>
+          <input type="range" id="cerca-radio" min="1" max="30" step="1" value="5" class="rango">
+        </div>
+        <div>
+          <div class="eti">Ordenar por</div>
+          <div class="seg tres" id="cerca-orden">
+            <button type="button" data-o="minutos" aria-pressed="true">Tiempo</button>
+            <button type="button" data-o="km" aria-pressed="false">Distancia</button>
+            <button type="button" data-o="precio" aria-pressed="false">Precio</button>
+          </div>
+        </div>
+        <p class="nota" id="cerca-msj" aria-live="polite"></p>
+        <ol class="lista-est" id="cerca-lista"></ol>
+      </section>
+
+      <section data-vista="ruta" hidden>
+        <div class="seg dos" id="ruta-modo">
+          <button type="button" data-modo="viaje" aria-pressed="true">Viaje y recargas</button>
+          <button type="button" data-modo="surtido" aria-pressed="false">Surtido con pipa</button>
+        </div>
+        <div id="ruta-viaje" class="bloque">
+          <div class="puntos">
+            <label class="eti" for="r-origen">Origen</label>
+            <div class="punto"><select id="r-origen"></select><button type="button" class="mini" data-elige="origen">✛ mapa</button></div>
+            <label class="eti" for="r-destino">Destino</label>
+            <div class="punto"><select id="r-destino"></select><button type="button" class="mini" data-elige="destino">✛ mapa</button></div>
+          </div>
+          <div>
+            <div class="eti">Vehículo</div>
+            <div class="vehiculos" id="r-vehiculos"></div>
+          </div>
+          <div class="campos">
+            <label>Tanque <span><input type="number" id="r-tanque" min="5" max="1500" step="1"> l</span></label>
+            <label>Rendimiento <span><input type="number" id="r-rend" min="1" max="60" step="0.5"> km/l</span></label>
+            <label>Trae <span><input type="number" id="r-inicial" min="0" max="1500" step="1"> l</span></label>
+            <label>Corredor <span><input type="number" id="r-corredor" min="0.5" max="20" step="0.5" value="3"> km</span></label>
+          </div>
+          <div>
+            <div class="eti">Optimizar</div>
+            <div class="seg tres" id="r-objetivo">
+              <button type="button" data-o="costo" aria-pressed="true">Menor gasto</button>
+              <button type="button" data-o="paradas" aria-pressed="false">Menos paradas</button>
+              <button type="button" data-o="tiempo" aria-pressed="false">Menor tiempo</button>
+            </div>
+          </div>
+          <button type="button" class="btn-ancho" id="r-calcular">▶ Calcular ruta y paradas</button>
+        </div>
+        <div id="ruta-surtido" class="bloque" hidden>
+          <div class="puntos">
+            <label class="eti" for="s-base">Base de la pipa (terminal)</label>
+            <div class="punto"><select id="s-base"></select><button type="button" class="mini" data-elige="base">✛ mapa</button></div>
+          </div>
+          <div class="campos">
+            <label>Pipas <span><input type="number" id="s-pipas" min="1" max="10" step="1" value="1"></span></label>
+            <label>Capacidad <span><input type="number" id="s-cap" min="1000" max="62000" step="1000" value="20000"> l</span></label>
+            <label>Por estación <span><input type="number" id="s-litros" min="500" max="62000" step="500" value="10000"> l</span></label>
+          </div>
+          <p class="nota">Clic en las gasolineras del mapa (o «Agregar al surtido» en su ficha) para armar los pedidos.</p>
+          <ol class="lista-est" id="s-pedidos"></ol>
+          <button type="button" class="btn-ancho" id="s-calcular">▶ Planear surtido</button>
+        </div>
+        <p class="nota" id="ruta-msj" aria-live="polite"></p>
+        <div id="ruta-res"></div>
+      </section>
+
+      <section data-vista="estacion" id="est" aria-live="polite" hidden></section>
+
       <section data-vista="fuentes" hidden>
+        <div class="texto" id="fuentes-demo" hidden>
+          <div class="eti">Datos de demostración</div>
+          <p>Las gasolineras que ves son SINTÉTICAS (data/ejemplo). Corre <code>python -m pipeline.correr</code> y luego <code>python scripts/construir_datos.py</code> para cargar las reales.</p>
+        </div>
         <div class="texto">
-          <div class="eti">Fuente</div>
-          <p>AMIS, Centro Estadístico, «Robo de vehículos asegurados», reporte de diciembre de 2025 (entidades, municipios, submarcas).</p>
-          <p>Vehículo más robado por entidad: AMIS, difundido en prensa en marzo de 2026, sin periodo explícito.</p>
+          <div class="eti">Fuentes</div>
+          <p>Precios y estaciones: Comisión Nacional de Energía (antes CRE), publicación diaria por permiso.</p>
+          <p>Ubicación y marca: CNE, OpenStreetMap (ODbL) y DENUE del INEGI. Calidad: Profeco, «Quién es Quién en los combustibles».</p>
+          <p>Tomas clandestinas: Pemex vía prensa (Infobae, El CEO, Grupo Animal con datos IGAVIM). Solo conteos agregados por estado o municipio, con su periodo.</p>
+          <p>Rutas: OSRM sobre OpenStreetMap; sin servidor OSRM se usa una red vial de ejemplo.</p>
         </div>
         <div class="texto">
           <div class="eti">Alcance y metodología</div>
-          <p>Solo vehículos asegurados; no equivale al total de robos denunciados que publica el SESNSP.</p>
-          <p>Son conteos absolutos: las entidades con más vehículos asegurados tienden a aparecer arriba. Falta normalizar por parque vehicular.</p>
-          <p>Recuperación mayor a 100 %: unidades robadas en una entidad y recuperadas en otra.</p>
-          <p>Límites estatales generalizados y ubicación de municipios referencial; no son cartografía oficial.</p>
-          <p>Las siluetas de vehículos son genéricas por tipo; no representan ningún modelo.</p>
+          <p>Precio de la entidad = promedio simple de sus estaciones con ese producto. Precios fuera de 12–40 MXN/l se descartan.</p>
+          <p>La capa de huachicol es solo referencia: periodos distintos (anual, semestre, trimestre) no se suman. No hay puntos de tomas, ductos ni datos operativos; los focos se dibujan en la cabecera municipal.</p>
+          <p>Recargas: Dijkstra sobre (estación, litros en el tanque); la ruta entre puntos con A*/Contraction Hierarchies del motor.</p>
+          <p>Límites estatales generalizados; no son cartografía oficial.</p>
         </div>
         <div class="texto">
           <div class="eti">Proyección</div>
@@ -166,13 +251,15 @@
         </div>
         <div class="texto">
           <div class="eti">Cómo usarlo</div>
-          <p>Clic en una entidad para fijarla. Mayús + clic en otra para compararlas. La patrulla recorre sola las primeras del ranking.</p>
+          <p>Clic en una entidad para fijarla; clic en una gasolinera para ver su ficha. Mayús + clic en otra entidad para compararlas.</p>
           <dl class="atajos">
             <dt><kbd>Esc</kbd></dt><dd>cierra el panel, suelta el objetivo, cierra la línea de tiempo</dd>
-            <dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></dt><dd>indicador</dd>
+            <dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>regular, premium, diésel, estaciones, tomas</dd>
             <dt><kbd>V</kbd></dt><dd>coroplético o burbujas</dd>
-            <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>año anterior o siguiente</dd>
-            <dt><kbd>espacio</kbd></dt><dd>reproducir la serie</dd>
+            <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>corte anterior o siguiente</dd>
+            <dt><kbd>espacio</kbd></dt><dd>reproducir la serie de precios</dd>
+            <dt><kbd>G</kbd></dt><dd>gasolineras cerca de mí</dd>
+            <dt><kbd>R</kbd></dt><dd>ruta y recargas</dd>
             <dt><kbd>C</kbd></dt><dd>comparar con otra entidad</dd>
             <dt><kbd>P</kbd></dt><dd>patrulla automática</dd>
             <dt><kbd>F</kbd></dt><dd>pantalla completa</dd>
@@ -194,8 +281,12 @@
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg></button>
       <button type="button" class="hta" id="h-ranking" data-panel="ranking" data-etq="Ranking de entidades" aria-label="Ranking de entidades" aria-controls="panel" aria-expanded="false">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h8M4 15h5"/></svg></button>
-      <button type="button" class="hta" id="h-submarcas" data-panel="submarcas" data-etq="Submarcas más robadas" aria-label="Submarcas más robadas" aria-controls="panel" aria-expanded="false">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 13v-2.4l2.2-.8L6.4 7h6l3 2.8 2.6.8V13h-1.6M6.6 13h6.6"/><circle cx="5" cy="13.4" r="1.6"/><circle cx="14.8" cy="13.4" r="1.6"/></svg></button>
+      <button type="button" class="hta" id="h-marcas" data-panel="marcas" data-etq="Marcas" aria-label="Marcas" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 17V4.5Q4 3 5.5 3h5Q12 3 12 4.5V17M2.5 17h11M5.8 5.5h4.4v3H5.8zM12 7h1.6q1.4 0 1.4 1.4v5.2a1.2 1.2 0 0 0 2.4 0V7.5L15.5 5"/></svg></button>
+      <button type="button" class="hta" id="h-cerca" data-panel="cerca" data-etq="Cerca de mí" aria-label="Gasolineras cerca de mí" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><circle class="lleno" cx="10" cy="10" r="2"/><path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3"/></svg></button>
+      <button type="button" class="hta" id="h-ruta" data-panel="ruta" data-etq="Ruta y recargas" aria-label="Ruta y recargas" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="15.5" r="2"/><circle cx="15.5" cy="4.5" r="2"/><path d="M6.5 15.5h5a2.5 2.5 0 0 0 0-5h-3a2.5 2.5 0 0 1 0-5h5"/></svg></button>
       <button type="button" class="hta" id="h-capas" data-panel="capas" data-etq="Capas" aria-label="Capas" aria-controls="panel" aria-expanded="false">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.6l7 3.6-7 3.6-7-3.6zM3 10l7 3.6 7-3.6M3 13.8l7 3.6 7-3.6"/></svg></button>
       <button type="button" class="hta" id="h-buscar" data-panel="buscar" data-etq="Buscador" aria-label="Buscador" aria-controls="panel" aria-expanded="false">
@@ -215,7 +306,7 @@
 </div>
 
 <script src="/static/vendor/d3.min.js"></script>
-<script src="/static/siluetas.js?v=2"></script>
-<script src="/static/app.js?v=2"></script>
+<script src="/static/siluetas.js?v=3"></script>
+<script src="/static/app.js?v=3"></script>
 </body>
 </html>

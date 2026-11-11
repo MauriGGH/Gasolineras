@@ -1,4 +1,4 @@
-/* Ojo de Dios · Robo vehicular MX — siluetas de vehículos.
+/* Ojo de Dios · Gasolineras MX — siluetas de vehículos, bombas y pipas.
    Dibujos GENÉRICOS por tipo, en líneas (malla de alambre). No representan ningún
    modelo real ni llevan logotipos: la marca y la submarca solo aparecen como texto.
    Aquí no hay cifras; este archivo solo sabe dibujar. */
@@ -70,6 +70,24 @@ const Siluetas = (() => {
       ruedas: [[52, 74, 20], [188, 74, 20]],
       cuadernas: [[150, 26, 27, 22], [52, 73, 75, 7], [188, 73, 75, 7], [86, 45, 51, 9], [106, 57, 72, 10]],
     },
+    // Bomba despachadora genérica: cuerpo, pantalla, manguera y pistola. Sin logotipos.
+    bomba: {
+      nombre: "Bomba despachadora", fondo: 20,
+      cuerpo: "M92 92L92 20Q92 14 98 14L142 14Q148 14 148 20L148 92Z",
+      lineas: ["M100 24H140V44H100Z", "M104 52H116M124 52H136", "M100 60H140", "M100 68H140", "M84 92H156V96H84Z",
+               "M148 34Q172 34 172 54L172 78Q172 86 164 86", "M160 80L168 76L176 82L170 90Z", "M88 14H152"],
+      ruedas: [],
+      cuadernas: [[92, 14, 92, 20], [120, 14, 92, 20], [148, 14, 92, 20]],
+    },
+    // Pipa: tractocamión con tanque cilíndrico. No distingue capacidad ni producto.
+    pipa: {
+      nombre: "Pipa de combustible", fondo: 34,
+      cuerpo: "M14 62L14 30Q14 22 24 22L150 22Q160 22 160 30L160 62Q160 70 150 70L24 70Q14 70 14 62Z",
+      lineas: ["M166 84L166 34Q166 30 170 30L196 30Q202 30 205 36L214 52L222 56Q226 58 226 64L226 84", "M172 36H196L206 52H172Z",
+               "M18 76H226", "M56 22V70M104 22V70", "M80 18H96V22", "M160 46H166"],
+      ruedas: [[40, 84, 12], [70, 84, 12], [196, 84, 12]],
+      cuadernas: [[14, 30, 62], [56, 22, 70], [104, 22, 70], [150, 22, 70], [166, 32, 84], [226, 60, 84]],
+    },
     // Silueta neutra: se usa cuando los datos no dicen de qué tipo es el vehículo.
     neutra: {
       nombre: "Tipo no disponible", fondo: 30,
@@ -86,6 +104,7 @@ const Siluetas = (() => {
   const POR_PALABRA = [
     ["semirremolque", "semi"], ["tractocamion", "tracto"], ["equipo pesado", "tracto"], ["motocicleta", "moto"],
     ["pick up", "pickup"], ["pickup", "pickup"], ["comercial", "comercial"], ["automovil", "sedan"],
+    ["sedan", "sedan"], ["bomba", "bomba"], ["pipa", "pipa"], ["moto", "moto"], ["tracto", "tracto"],
   ];
 
   /* Silueta que corresponde a un texto de tipo tal como viene en los datos

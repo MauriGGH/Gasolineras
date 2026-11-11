@@ -1,6 +1,6 @@
 /* Idea de diseño: el mapa es toda la pantalla. Encima solo quedan el nombre, una cifra
    y una barra delgada; lo demás vive en un panel único que se abre a petición.
-   Frío (hielo) para el instrumento; ámbar→rojo solo para la magnitud del robo.
+   Frío (hielo) para el instrumento; ámbar→rojo solo para la magnitud (precio alto, tomas reportadas).
    Las animaciones usan transform y opacity para no cargar equipos sin tarjeta gráfica. */
 :root{
   color-scheme: dark;
@@ -25,7 +25,7 @@
 [hidden]{display:none !important}
 html,body{height:100%;margin:0;overflow:hidden}
 body{background:var(--fondo);color:var(--tinta);font-family:var(--f-dato);font-size:13px;line-height:1.45}
-button,input{font:inherit;color:inherit}
+button,input,select{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer;padding:0}
 button:disabled,input:disabled{opacity:.4;cursor:not-allowed}
 :focus-visible{outline:2px solid var(--hielo);outline-offset:2px}
@@ -371,6 +371,70 @@ kbd{font:inherit;font-size:9.5px;border:1px solid var(--linea);padding:0 4px;mar
 .anio-marcas span.va{color:var(--hielo)}
 .franja .nota{width:190px;flex:none}
 
+
+/* ================= Gasolineras: capas y controles propios ================= */
+/* Aviso permanente cuando los datos son de demostración */
+.demo{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:4;max-width:min(560px,calc(100% - 520px));min-width:220px;
+  border:1px dashed var(--ambar);color:var(--ambar);background:rgba(6,10,17,.9);padding:5px 10px;font-size:10.5px;letter-spacing:.06em;text-align:center}
+.con-panel .demo{left:calc((100% - var(--panel) - var(--barra)) / 2)}
+/* Gasolineras: puntos chicos con el color de su marca */
+.est{stroke:#04080d;stroke-width:.6;vector-effect:non-scaling-stroke;cursor:pointer;transition:opacity .3s}
+.est:hover{stroke:#fff;stroke-width:1.4}
+.est.fuera-marca{opacity:.12}
+.hay-objetivo .est:not(.en-sel){opacity:.25}
+.est.dentro{stroke:var(--hielo);stroke-width:1.6}
+.est-sel{fill:none;stroke:var(--hielo);stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none;
+  transform-box:fill-box;transform-origin:center;animation:giro 6s linear infinite;stroke-dasharray:3 3}
+/* Geocerca, ubicación y rutas */
+.geocerca{fill:rgba(98,211,232,.07);stroke:var(--hielo);stroke-width:1.2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none;
+  animation:hormigas 1.4s linear infinite}
+.yo{fill:var(--hielo);stroke:#04080d;stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none}
+.yo-onda{fill:none;stroke:var(--hielo);stroke-width:1.2;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulso 2s ease-out infinite;pointer-events:none}
+.ruta-halo{fill:none;stroke:rgba(98,211,232,.25);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none}
+.ruta-linea{fill:none;stroke:var(--hielo);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;
+  stroke-dasharray:1;stroke-dashoffset:1;animation:trazar 1.4s var(--suave) forwards}
+.ruta-linea.pipa{stroke:var(--ambar)}
+.ruta-linea.pipa.p1{stroke:#b48cff}.ruta-linea.pipa.p2{stroke:#7ee08a}
+.parada{fill:var(--ambar);stroke:#04080d;stroke-width:1.2;vector-effect:non-scaling-stroke;pointer-events:none}
+.parada-n{font-family:var(--f-titulo);font-weight:700;fill:#04121a;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.extremo{fill:#04080d;stroke:var(--hielo);stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none}
+.extremo.b{stroke:var(--rojo)}
+.elige-punto .mapa svg{cursor:crosshair}
+
+/* Listas de estaciones (cerca de mí, pedidos de surtido, más baratas) */
+.lista-est{list-style:none;margin:0;padding:0;border-top:1px solid var(--linea)}
+.lista-est li{border-bottom:1px solid var(--linea)}
+.lista-est button.fila-est{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:baseline;width:100%;text-align:left;padding:6px 4px 7px}
+.lista-est button.fila-est:hover{background:var(--panel-2)}
+.lista-est i{font-style:normal;color:var(--tenue);font-size:11px}
+.lista-est small{display:block;color:var(--tenue);font-size:10.5px}
+.lista-est .precio{font-family:var(--f-titulo);font-size:16px;font-weight:600;text-align:right}
+.lista-est .quitar{color:var(--tenue);padding:0 6px}
+.lista-est .quitar:hover{color:var(--rojo)}
+.punto-marca{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+
+/* Formulario de ruta */
+.bloque{display:flex;flex-direction:column;gap:12px}
+.puntos{display:grid;grid-template-columns:1fr;gap:4px}
+.puntos .eti{margin:4px 0 0}
+.punto{display:grid;grid-template-columns:1fr auto;gap:6px}
+.punto .mini[aria-pressed="true"]{color:var(--ambar);border-color:var(--ambar)}
+select,.campos input{background:var(--panel-2);border:1px solid var(--linea);padding:6px 8px;width:100%;min-width:0}
+select:focus,.campos input:focus{border-color:var(--hielo);outline:none}
+.campos{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.campos label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tenue)}
+.campos label span{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;color:var(--tenue)}
+.vehiculos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.vehiculos button{border:1px solid var(--linea);padding:6px 4px 5px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--tenue)}
+.vehiculos button .sil{width:100%;max-width:62px}
+.vehiculos button .sil path{stroke:var(--tenue);stroke-width:5}
+.vehiculos button[aria-pressed="true"]{border-color:var(--hielo);color:var(--hielo);background:rgba(98,211,232,.08)}
+.vehiculos button[aria-pressed="true"] .sil path{stroke:var(--hielo)}
+.rango{width:100%;accent-color:var(--hielo)}
+.paradas{counter-reset:p}
+.chip-marca.verde{border-color:var(--hielo)}
+code{font-size:11px;color:var(--hielo)}
+
 /* ---------- pantallas angostas: la barra baja y los paneles son hojas que suben ---------- */
 @media (max-width:720px){
   :root{--barra:50px;--franja:104px}
@@ -381,7 +445,9 @@ kbd{font:inherit;font-size:9.5px;border:1px solid var(--linea);padding:0 4px;mar
   .cifra-nac b{font-size:30px}
   .barra{top:auto;left:0;width:auto;height:var(--barra);border-left:0;border-top:1px solid var(--linea);display:block;padding:0}
   .htas{flex-direction:row;justify-content:space-around;align-items:center;height:100%;gap:0;padding:0 2px}
-  .hta{width:42px;height:42px}
+  .hta{width:36px;height:42px}
+  .demo{top:auto;bottom:calc(var(--barra) + 150px);max-width:calc(100% - 20px);left:50%}
+  .con-panel .demo{display:none}
   .zoom{position:absolute;right:8px;bottom:calc(var(--barra) + 10px);background:rgba(6,10,17,.85)}
   .con-panel .zoom,.con-franja .zoom{display:none}      /* la hoja ocupa ese lugar; en táctil se acerca con dos dedos */
   [data-etq]::before{display:none}
