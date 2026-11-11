@@ -1,0 +1,273 @@
+{
+ "geocercas": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -99.1332,
+      19.4326
+     ]
+    },
+    "properties": {
+     "id": "c",
+     "nombre": "Círculo",
+     "tipo": "circulo",
+     "marca": "Pemex",
+     "radio_km": 0.5,
+     "centro": [
+      -99.1332,
+      19.4326
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Polygon",
+     "coordinates": [
+      [
+       [
+        -99,
+        19
+       ],
+       [
+        -98,
+        19
+       ],
+       [
+        -98,
+        20
+       ],
+       [
+        -99,
+        20
+       ],
+       [
+        -99,
+        19
+       ]
+      ]
+     ]
+    },
+    "properties": {
+     "id": "p",
+     "nombre": "Polígono",
+     "tipo": "poligono"
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "MultiPolygon",
+     "coordinates": [
+      [
+       [
+        [
+         -99,
+         19
+        ],
+        [
+         -98,
+         19
+        ],
+        [
+         -98,
+         20
+        ],
+        [
+         -99,
+         20
+        ],
+        [
+         -99,
+         19
+        ]
+       ],
+       [
+        [
+         -98.6,
+         19.4
+        ],
+        [
+         -98.4,
+         19.4
+        ],
+        [
+         -98.4,
+         19.6
+        ],
+        [
+         -98.6,
+         19.6
+        ],
+        [
+         -98.6,
+         19.4
+        ]
+       ]
+      ]
+     ]
+    },
+    "properties": {
+     "id": "m",
+     "nombre": "Dona",
+     "tipo": "multipoligono"
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "LineString",
+     "coordinates": [
+      [
+       -99.0,
+       19.0
+      ],
+      [
+       -98.0,
+       19.0
+      ]
+     ]
+    },
+    "properties": {
+     "id": "r",
+     "nombre": "r",
+     "tipo": "corredor",
+     "capa": "ruta",
+     "ancho_km": 1.0
+    }
+   }
+  ]
+ },
+ "casos": [
+  {
+   "punto": [
+    19.4326,
+    -99.1332
+   ],
+   "esperado": {
+    "c": true,
+    "p": false,
+    "m": false,
+    "r": false
+   },
+   "distancia": {
+    "c": -0.5,
+    "p": 13.963575,
+    "m": 13.963575,
+    "r": 49.096665
+   }
+  },
+  {
+   "punto": [
+    19.4346,
+    -99.1332
+   ],
+   "esperado": {
+    "c": true,
+    "p": false,
+    "m": false,
+    "r": false
+   },
+   "distancia": {
+    "c": -0.27761,
+    "p": 13.963517,
+    "m": 13.963517,
+    "r": 49.310227
+   }
+  },
+  {
+   "punto": [
+    19.2,
+    -98.8
+   ],
+   "esperado": {
+    "c": false,
+    "p": true,
+    "m": true,
+    "r": false
+   },
+   "distancia": {
+    "c": 42.990929,
+    "p": -20.976344,
+    "m": -20.976344,
+    "r": 21.239016
+   }
+  },
+  {
+   "punto": [
+    19.5,
+    -98.5
+   ],
+   "esperado": {
+    "c": false,
+    "p": true,
+    "m": false,
+    "r": false
+   },
+   "distancia": {
+    "c": 66.305671,
+    "p": -52.408548,
+    "m": 10.48171,
+    "r": 54.59754
+   }
+  },
+  {
+   "punto": [
+    19.005,
+    -98.5
+   ],
+   "esperado": {
+    "c": false,
+    "p": true,
+    "m": true,
+    "r": true
+   },
+   "distancia": {
+    "c": 81.236808,
+    "p": -0.555975,
+    "m": -0.555975,
+    "r": -0.444025
+   }
+  },
+  {
+   "punto": [
+    19.05,
+    -98.5
+   ],
+   "esperado": {
+    "c": false,
+    "p": true,
+    "m": true,
+    "r": false
+   },
+   "distancia": {
+    "c": 78.423437,
+    "p": -5.559754,
+    "m": -5.559754,
+    "r": 4.559754
+   }
+  },
+  {
+   "punto": [
+    21,
+    -98.5
+   ],
+   "esperado": {
+    "c": false,
+    "p": false,
+    "m": false,
+    "r": false
+   },
+   "distancia": {
+    "c": 185.889456,
+    "p": 111.19508,
+    "m": 111.19508,
+    "r": 221.39016
+   }
+  }
+ ]
+}
