@@ -13,7 +13,8 @@ El frontend se adaptará del mapa de referencia (mismo diseño, cambio de tema).
 |---|---|
 | `pipeline/` | Ingesta (CNE, OSM, DENUE), limpieza, marcas, integración, GeoJSON, capa de huachicol agregada |
 | `routing/` | Dijkstra/A* genéricos, plan de recargas por autonomía, ruta de pipa (CVRP), cliente OSRM |
-| `geo/` | Distancias, proyección sobre rutas, geocercas (círculo, polígono, corredor), georreferenciación |
+| `geo/` | Distancias, proyección sobre rutas, geocercas (círculo, polígono, multipolígono, corredor), monitor en vivo, índice espacial, georreferenciación |
+| `web/geo/` | Módulo JS para el navegador: ubicación del usuario y geocercas sobre el mismo GeoJSON |
 | `docs/` | Fuentes de datos, diseño del pipeline y del ruteo |
 | `data/manual/` | Datos capturados a mano con fuente (huachicol por estado/municipio, Profeco) |
 | `data/geo/` | Polígonos INEGI de estados y municipios (no se versionan, ver docs/contrato-datos.md) |
@@ -33,6 +34,21 @@ Para rutas reales hace falta un OSRM local con el PBF de México (ver `routing/o
 
 Un GitHub Action (`.github/workflows/pipeline-diario.yml`) corre todo a las 19:00 (centro de México)
 y publica `data/curated/` en la rama `datos`.
+
+## Georreferencia y geocercas
+
+- `geo.geocodificacion.Geocodificador`: dirección -> coordenadas y coordenadas -> dirección
+  (Nominatim, solo México, caché y 1 petición/s). Si el texto ya son coordenadas
+  ("19.43, -99.13", enlace de Google Maps, 19°25'57"N 99°07'59"W) no consulta nada.
+- `geo.geocodificacion.IndiceAreas`: punto -> municipio/estado con los polígonos del INEGI
+  (respeta huecos y multipolígonos).
+- `geo.geocercas`: círculo, polígono, multipolígono y corredor; `distancia_borde_km` con signo;
+  `geocercas_de_estaciones`, `corredor_de_ruta`, `zonas_de_referencia` (desde la coropleta de
+  huachicol) y conversión a/desde GeoJSON.
+- `geo.monitor.MonitorGeocercas`: eventos entrada/salida/permanencia con histéresis y filtro
+  de precisión del GPS.
+- `geo.indice.IndiceEspacial`: estaciones cercanas / k más cercanas sin revisar las ~13 mil.
+- `web/geo/`: lo mismo del lado del navegador (`npm test` dentro de la carpeta).
 
 ## Datos sensibles
 

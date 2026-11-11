@@ -75,3 +75,61 @@ def punto_en_poligono(p: Punto, poligono: list[Punto]) -> bool:
             if lon < lon_cruce:
                 dentro = not dentro
     return dentro
+
+
+# --- Extensiones para geocercas y georreferenciación -----------------------------------
+
+Caja = tuple[float, float, float, float]  # (lat_min, lon_min, lat_max, lon_max)
+
+# Caja aproximada de la República Mexicana (incluye islas del Pacífico cercanas).
+CAJA_MEXICO: Caja = (14.3, -118.7, 32.8, -86.5)
+
+
+def en_mexico(p: Punto) -> bool:
+    """¿La coordenada es numérica, finita y cae en la caja de México? Sirve para limpiar feeds."""
+    lat, lon = p
+    if not (math.isfinite(lat) and math.isfinite(lon)):
+        return False
+    return CAJA_MEXICO[0] <= lat <= CAJA_MEXICO[2] and CAJA_MEXICO[1] <= lon <= CAJA_MEXICO[3]
+
+
+def caja_de(puntos: list[Punto], margen_km: float = 0.0) -> Caja:
+    """Caja envolvente de un conjunto de puntos, agrandada margen_km hacia cada lado."""
+    lats = [p[0] for p in puntos]
+    lons = [p[1] for p in puntos]
+    dlat = math.degrees(margen_km / RADIO_TIERRA_KM)
+    lat_ref = max(abs(min(lats)), abs(max(lats)))
+    dlon = dlat / max(math.cos(math.radians(lat_ref + dlat)), 1e-6)
+    return min(lats) - dlat, min(lons) - dlon, max(lats) + dlat, max(lons) + dlon
+
+
+def en_caja(p: Punto, caja: Caja) -> bool:
+    return caja[0] <= p[0] <= caja[2] and caja[1] <= p[1] <= caja[3]
+
+
+def punto_destino(origen: Punto, rumbo_grados: float, distancia_km: float) -> Punto:
+    """Punto al que se llega saliendo de origen con un rumbo (0 = norte) y una distancia."""
+    d = distancia_km / RADIO_TIERRA_KM
+    th = math.radians(rumbo_grados)
+    lat1, lon1 = map(math.radians, origen)
+    lat2 = math.asin(math.sin(lat1) * math.cos(d) + math.cos(lat1) * math.sin(d) * math.cos(th))
+    lon2 = lon1 + math.atan2(math.sin(th) * math.sin(d) * math.cos(lat1), math.cos(d) - math.sin(lat1) * math.sin(lat2))
+    return math.degrees(lat2), (math.degrees(lon2) + 540) % 360 - 180
+
+
+def circulo_a_poligono(centro: Punto, radio_km: float, lados: int = 64) -> list[Punto]:
+    """Aproxima un círculo con un polígono (para pintarlo en MapLibre o guardarlo como GeoJSON)."""
+    return [punto_destino(centro, 360 * i / lados, radio_km) for i in range(lados)]
+
+
+def distancia_a_anillo_km(p: Punto, anillo: list[Punto]) -> float:
+    """Distancia mínima de p al borde de un anillo (cerrado o no)."""
+    n = len(anillo)
+    return min(proyectar_en_segmento(p, anillo[i], anillo[(i + 1) % n])[1] for i in range(n))
+
+
+def punto_en_poligono_con_huecos(p: Punto, anillos: list[list[Punto]]) -> bool:
+    """El primer anillo es el exterior y los demás son huecos (como en GeoJSON)."""
+    if not anillos or not punto_en_poligono(p, anillos[0]):
+        return False
+    return not any(punto_en_poligono(p, hueco) for hueco in anillos[1:])

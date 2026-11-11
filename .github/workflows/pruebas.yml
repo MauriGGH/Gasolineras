@@ -12,3 +12,12 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e ".[dev,datos]"
       - run: python -m pytest -q
+  web-geo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm test
+        working-directory: web/geo
