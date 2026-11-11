@@ -902,25 +902,45 @@ function alternarPatrulla(){
 }
 $("patrulla").onclick = alternarPatrulla;
 
-/* ---------- cerca de mí: geocerca circular y gasolineras ordenadas ---------- */
-const cerca = { centro:null, origen:null, radio:5, orden:"minutos", res:[] };
+/* ---------- cerca de mí: geocercas, gasolineras ordenadas y alertas ----------
+   Toda la geometría de geocercas viene de web/geo (servido en /geo/, mismo cálculo que geo/ en Python):
+   el radio de búsqueda, las geocercas guardadas (círculos y polígonos dibujados), su edición en el mapa
+   y el monitor de entrada/salida/permanencia para ti (GPS) y para la flotilla (WebSocket del motor). */
+let G = null;
+try { G = await import("/geo/index.js"); } catch(err){ console.error("No se pudo cargar /geo/index.js", err); }
+const cerca = { centro:null, origen:null, radio:5, orden:"minutos", res:[],
+  zonas:[], sel:null, edita:false, dibujo:null, alertas:[],
+  seguir:null, yo:null, yoMon:null, unidades:new Map(), ws:null, sim:false };
 const R_TIERRA = 6371.0088;
 function haversine(a, b){
   const r = x => x*Math.PI/180, dlat = r(b.lat-a.lat), dlon = r(b.lon-a.lon);
   const h = Math.sin(dlat/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dlon/2)**2;
   return 2*R_TIERRA*Math.asin(Math.sqrt(h));
 }
-// Geocerca circular como polígono geográfico, para dibujarla con la misma proyección del mapa
-function circuloGeo(c, km){ return d3.geoCircle().center([c.lon, c.lat]).radius(km / 111.195).precision(2)(); }
+// d3 dibuja en la esfera: el anillo exterior debe ir en sentido horario o pinta "todo el mundo menos la zona"
+function geomD3(geocerca){
+  const f = geocerca.aGeojson();
+  if(d3.geoArea(f) > 2*Math.PI){
+    const g = f.geometry, rev = r => r.slice().reverse();
+    g.coordinates = g.type === "Polygon" ? g.coordinates.map(rev) : g.coordinates.map(p => p.map(rev));
+  }
+  return f;
+}
+// Radio de búsqueda como geocerca de web/geo (antes d3.geoCircle)
+const circuloBusqueda = (c, km) => G.circulo("busqueda", [c.lat, c.lon], km, {nombre:"Radio de búsqueda"});
+function circuloGeo(c, km){ return geomD3(circuloBusqueda(c, km)).geometry; }
 function ponerCentro(c, origen){ cerca.centro = c; cerca.origen = origen; buscarCerca(true); }
 async function buscarCerca(volando){
   const c = cerca.centro;
-  pintarGeocerca();
+  if(!G){ $("cerca-msj").textContent = "No cargó el módulo de geocercas (/geo/index.js). Revisa el servidor."; return; }
+  cerca.sel = null;
+  pintarGeocerca(); pintarZonas();
   if(!c){ $("cerca-lista").innerHTML = ""; return; }
+  const fence = circuloBusqueda(c, cerca.radio);
   if(volando) volarA(circuloGeo(c, cerca.radio).coordinates[0], 60);
   const p = prodActual();
   // Dentro de la geocerca: filtro local en línea recta (rápido y sin red)
-  const dentro = new Set(EST.filter(e => haversine(c, e) <= cerca.radio));
+  const dentro = new Set(EST.filter(e => fence.contiene([e.lat, e.lon])));
   gEst.selectAll("circle").classed("dentro", d => dentro.has(d));
   $("cerca-msj").textContent = `${dentro.size} gasolineras dentro de la geocerca de ${cerca.radio} km. Calculando tiempos…`;
   let lista;
@@ -941,20 +961,308 @@ async function buscarCerca(volando){
   cerca.res = lista;
   $("cerca-lista").innerHTML = lista.length ? lista.map((d,i) => filaEst(d, i, p)).join("") : `<li class="nota" style="padding:8px 4px">Ninguna gasolinera dentro del radio. Agranda la geocerca.</li>`;
 }
+
+/* --- geocercas guardadas: {id, nombre, tipo:"circulo"|"poligono", centro, radioKm, vertices} + g (web/geo) --- */
+const CLAVE_ZONAS = "gasolineras.geocercas.v1";
+const aGeocerca = z => z.tipo === "circulo" ? G.circulo(z.id, z.centro, z.radioKm, {nombre:z.nombre}) : G.poligono(z.id, z.vertices, {nombre:z.nombre});
+function guardarZonas(){ try { localStorage.setItem(CLAVE_ZONAS, JSON.stringify(cerca.zonas.map(({g, ...z}) => z))); } catch(_){} }
+function leerZonas(){
+  try {
+    const l = JSON.parse(localStorage.getItem(CLAVE_ZONAS) || "[]");
+    return Array.isArray(l) ? l.filter(z => z && z.id && (z.tipo === "circulo" ? z.centro && z.radioKm > 0 : z.vertices?.length >= 3)) : [];
+  } catch(_){ return []; }
+}
+function agregarZona(z){
+  const n = cerca.zonas.reduce((m, x) => Math.max(m, +(/^z(\d+)$/.exec(x.id)?.[1] ?? 0)), 0) + 1;
+  z = {id:`z${n}`, nombre:z.nombre || `Geocerca ${n}`, ...z};
+  z.g = aGeocerca(z);
+  cerca.zonas.push(z);
+  monitores().forEach(m => m.agregar(z.g));
+  guardarZonas(); verZona(z.id); return z;
+}
+// Tras crear, editar o borrar: recalcula la geometría y reinicia el estado de esa zona en cada monitor
+function rehacer(z, final){
+  z.g = aGeocerca(z);
+  if(!final) return;
+  monitores().forEach(m => { m.quitar(z.id); m.agregar(z.g); });
+  guardarZonas(); pintarZonas();
+}
+function borrarZona(id){
+  cerca.zonas = cerca.zonas.filter(z => z.id !== id);
+  monitores().forEach(m => m.quitar(id));
+  if(cerca.sel === id) cerca.sel = null;
+  guardarZonas(); pintarZonas(); pintarGeocerca();
+}
+function verZona(id){
+  const z = cerca.zonas.find(z => z.id === id); if(!z) return;
+  cerca.sel = id;
+  const f = geomD3(z.g).geometry, anillo = f.type === "Polygon" ? f.coordinates[0] : f.coordinates.flat(1)[0];
+  volarA(anillo, 60);
+  const p = prodActual(), dentro = EST.filter(e => z.g.contiene([e.lat, e.lon]));
+  gEst.selectAll("circle").classed("dentro", d => dentro.includes(d));
+  const lista = dentro.filter(e => !estado.marca || e.marca === estado.marca).filter(e => hay(e.precios[p]))
+    .sort((a,b) => a.precios[p] - b.precios[p]).slice(0,10).map(e => ({...e, precio:e.precios[p], extra:e.entidad ?? ""}));
+  $("cerca-msj").textContent = `${dentro.length} gasolineras dentro de «${z.nombre}». Las ${lista.length} con ${NOM_PROD[p].toLowerCase()} más barata:`;
+  $("cerca-lista").innerHTML = lista.map((d,i) => filaEst(d, i, p)).join("");
+  pintarGeocerca(); pintarZonas();
+}
+function exportarZonas(){
+  // Mismo formato que lee geo.geocercas.geocercas_desde_geojson en Python (Point + radio_km, Polygon)
+  const features = cerca.zonas.map(z => ({type:"Feature", properties:{id:z.id, nombre:z.nombre, ...(z.tipo === "circulo" ? {radio_km:z.radioKm} : {})},
+    geometry: z.tipo === "circulo" ? {type:"Point", coordinates:[z.centro[1], z.centro[0]]}
+      : {type:"Polygon", coordinates:[[...z.vertices, z.vertices[0]].map(([lat, lon]) => [lon, lat])]}}));
+  const url = URL.createObjectURL(new Blob([JSON.stringify({type:"FeatureCollection", features}, null, 1)], {type:"application/geo+json"}));
+  const a = Object.assign(document.createElement("a"), {href:url, download:"geocercas.geojson"});
+  a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* --- monitores: uno para ti y uno por unidad de la flotilla --- */
+const OPC_MONITOR = { histeresisKm:0.03, precisionMaxM:200, permanenciaMs:5*60e3 };
+const nuevoMonitor = () => new G.MonitorGeocercas(cerca.zonas.map(z => z.g), OPC_MONITOR);
+const monitores = () => [cerca.yoMon, ...[...cerca.unidades.values()].map(u => u.mon)].filter(Boolean);
+function quienEsta(id){
+  const q = [];
+  if(cerca.yoMon?.dentroDe().some(g => g.id === id)) q.push("tú");
+  for(const u of cerca.unidades.values()) if(u.mon.dentroDe().some(g => g.id === id)) q.push(u.nombre);
+  return q;
+}
+function alertaGeocerca(quien, ev){
+  const min = ev.permanenciaMs ? Math.round(ev.permanenciaMs/60000) : null;
+  const txt = { entrada:`${quien} entró a «${ev.geocerca.nombre}»`,
+    salida:`${quien} salió de «${ev.geocerca.nombre}»${min ? ` tras ${min} min` : ""}`,
+    permanencia:`${quien} lleva ${min} min en «${ev.geocerca.nombre}»` }[ev.tipo];
+  agregarAlerta(txt, ev.tipo);
+}
+let tAviso = null;
+function agregarAlerta(txt, tipo){
+  cerca.alertas.unshift({t:new Date(), txt, tipo});
+  cerca.alertas.length = Math.min(cerca.alertas.length, 40);
+  $("gc-alertas").innerHTML = cerca.alertas.map(a => `<li class="${a.tipo}"><time>${a.t.toLocaleTimeString("es-MX", {hour:"2-digit", minute:"2-digit", second:"2-digit"})}</time>${esc(a.txt)}</li>`).join("");
+  pintarZonas();
+  if(!ui.elige && !cerca.dibujo){ const a = $("aviso"); a.hidden = false; a.textContent = "⚑ " + txt; clearTimeout(tAviso); tAviso = setTimeout(aviso, 4000); }
+}
+
+/* --- seguir mi ubicación --- */
+function dejarDeSeguir(){ cerca.seguir?.(); cerca.seguir = null; cerca.yo = null; cerca.yoMon = null; $("gc-seguir").setAttribute("aria-pressed", false); pintarGeocerca(); pintarZonas(); }
+$("gc-seguir").onclick = () => {
+  if(!G) return;
+  if(cerca.seguir) return dejarDeSeguir();
+  cerca.yoMon = nuevoMonitor();
+  $("gc-seguir").setAttribute("aria-pressed", true);
+  $("gc-msj").textContent = "Siguiendo tu ubicación. Te aviso al entrar o salir de cada geocerca.";
+  cerca.seguir = G.seguirUbicacion(l => {
+    cerca.yo = l;
+    cerca.yoMon.actualizar(l).forEach(e => alertaGeocerca("Tú", e));
+    $("gc-msj").textContent = `Siguiendo tu ubicación · precisión ${Math.round(l.precisionM)} m.`;
+    repintar();
+  }, { filtro:G.crearFiltroLecturas({precisionMaxM:OPC_MONITOR.precisionMaxM}),
+       alError: err => { $("gc-msj").textContent = err.message; if(err.codigo === 1 || err.codigo === 0) dejarDeSeguir(); } });
+};
+
+/* --- flotilla en tiempo real (WebSocket del motor de rutas) --- */
+function moverUnidad(v){
+  let u = cerca.unidades.get(v.id);
+  if(!u){ u = {id:v.id, mon:nuevoMonitor()}; cerca.unidades.set(v.id, u); }
+  Object.assign(u, {nombre:v.nombre ?? v.id, color:v.color ?? "#ffb224", lat:v.lat, lon:v.lon});
+  u.mon.actualizar({lat:v.lat, lon:v.lon, timestamp:(v.actualizado ?? Date.now()/1000)*1000}).forEach(e => alertaGeocerca(u.nombre, e));
+}
+function mensajeFlotilla(e){
+  if(e.tipo === "estado"){
+    cerca.unidades.clear();
+    e.geojson.features.filter(f => f.properties.tipo === "vehiculo").forEach(f => moverUnidad(f.properties));
+  }
+  else if(e.tipo === "ruta" || e.tipo === "posicion") moverUnidad(e.vehiculo);
+  else if(e.tipo === "eliminado") cerca.unidades.delete(e.id);
+  else if(e.tipo === "alerta") agregarAlerta(e.mensaje, "flotilla");
+  $("gc-demo").hidden = !cerca.ws;
+  $("gc-demo").textContent = cerca.unidades.size ? (cerca.sim ? "⏸ Pausar simulación" : "▶ Simular recorrido") : "▶ Unidades de prueba";
+  $("gc-msj").textContent = `Flotilla: ${cerca.unidades.size} unidad${cerca.unidades.size === 1 ? "" : "es"} en vivo.`;
+  repintar(); pintarZonas();
+}
+function conectarFlotilla(){
+  if(cerca.ws){ cerca.ws.close(); return; }
+  const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/ruteo/flotilla/ws`);
+  cerca.ws = ws;
+  $("gc-flotilla").setAttribute("aria-pressed", true);
+  $("gc-msj").textContent = "Conectando con la flotilla…";
+  let abierto = false;
+  ws.onopen = () => { abierto = true; };
+  ws.onmessage = m => { try { mensajeFlotilla(JSON.parse(m.data)); } catch(err){ console.error(err); } };
+  ws.onclose = () => {
+    if(cerca.ws !== ws) return;
+    cerca.ws = null; cerca.unidades.clear();
+    $("gc-flotilla").setAttribute("aria-pressed", false); $("gc-demo").hidden = true;
+    $("gc-msj").textContent = abierto ? "Flotilla desconectada." : "No se pudo conectar con la flotilla (WebSocket /api/ruteo/flotilla/ws).";
+    repintar(); pintarZonas();
+  };
+}
+$("gc-flotilla").onclick = () => G && conectarFlotilla();
+$("gc-demo").onclick = async () => {
+  try {
+    if(!cerca.unidades.size){
+      const CDMX = [19.4326, -99.1332];
+      if(!cerca.zonas.length) agregarZona({tipo:"circulo", centro:CDMX, radioKm:3, nombre:"Base CDMX"});
+      await enviar("/api/ruteo/flotilla/vehiculos", {vehiculos:[
+        {id:"prueba-1", nombre:"Unidad 1 → Querétaro", posicion:CDMX, destinos:[[20.5888,-100.3899]]},
+        {id:"prueba-2", nombre:"Unidad 2 → Puebla", posicion:CDMX, destinos:[[19.0414,-98.2063]]},
+        {id:"prueba-3", nombre:"Unidad 3 → Cuernavaca", posicion:CDMX, destinos:[[18.9242,-99.2216]]},
+      ]});
+    }
+    cerca.sim = !cerca.sim;
+    await enviar("/api/ruteo/flotilla/simulacion", {activa:cerca.sim, cada_seg:0.5, acelerar:120});
+    $("gc-demo").textContent = cerca.sim ? "⏸ Pausar simulación" : "▶ Simular recorrido";
+  } catch(err){ $("gc-msj").textContent = `No se pudo usar la flotilla de prueba (${err.message}).`; }
+};
+
+/* --- dibujar polígonos y editar en el mapa --- */
+const avisoDibujo = () => { const a = $("aviso"); a.hidden = false;
+  a.textContent = `Dibujando geocerca · ${cerca.dibujo.pts.length} punto(s) · clic agrega · clic en el primero o Enter cierra · Esc cancela`; };
+function empezarDibujo(){
+  if(!G) return;
+  ponerEleccion(null); cerca.edita = false; $("gc-editar").setAttribute("aria-pressed", false);
+  cerca.dibujo = {pts:[], cursor:null};
+  app.classList.add("dibuja-geocerca");
+  $("gc-dibujar").setAttribute("aria-pressed", true); $("gc-dibujar").textContent = "✓ Terminar";
+  avisoDibujo(); pintarGeocerca();
+}
+function terminarDibujo(guardar){
+  const pts = cerca.dibujo?.pts ?? [];
+  cerca.dibujo = null;
+  app.classList.remove("dibuja-geocerca");
+  $("gc-dibujar").setAttribute("aria-pressed", false); $("gc-dibujar").textContent = "✎ Dibujar polígono";
+  aviso();
+  if(guardar && pts.length >= 3) agregarZona({tipo:"poligono", vertices:pts});
+  else if(guardar) $("gc-msj").textContent = "Un polígono necesita al menos 3 puntos.";
+  pintarGeocerca();
+}
+const lugar = ev => { const g = proy.invert(T.invert(d3.pointer(ev, svg.node()))); return g ? [+g[1].toFixed(5), +g[0].toFixed(5)] : null; };
+// En captura: mientras se dibuja, el clic agrega un vértice y no llega a estados ni gasolineras
+svg.node().addEventListener("click", ev => {
+  if(!cerca.dibujo) return;
+  ev.stopPropagation();
+  const p = lugar(ev), pts = cerca.dibujo.pts; if(!p) return;
+  if(pts.length >= 3){
+    const [x0, y0] = T.apply(proy([pts[0][1], pts[0][0]])), [x, y] = d3.pointer(ev, svg.node());
+    if(Math.hypot(x-x0, y-y0) < 12) return terminarDibujo(true);
+  }
+  pts.push(p); avisoDibujo(); pintarGeocerca();
+}, true);
+svg.on("pointermove.geocerca", ev => { if(cerca.dibujo){ cerca.dibujo.cursor = lugar(ev); repintar(); } });
+window.addEventListener("keydown", ev => {
+  if(!cerca.dibujo) return;
+  if(ev.key === "Escape"){ ev.stopImmediatePropagation(); terminarDibujo(false); }
+  else if(ev.key === "Enter"){ ev.preventDefault(); terminarDibujo(true); }
+  else if(ev.key === "Backspace" && !ev.target.matches("input")){ ev.preventDefault(); cerca.dibujo.pts.pop(); avisoDibujo(); pintarGeocerca(); }
+}, true);
+// Asas de edición: v = vértice, m = punto medio (arrastrar inserta un vértice), c = centro, r = radio
+const arrastre = d3.drag()
+  .subject((ev, d) => { const [x, y] = proy([d.p[1], d.p[0]]); return {x, y, d}; })
+  .on("start", ev => { const d = ev.subject.d;
+    if(d.tipo === "m"){ d.z.vertices.splice(d.i+1, 0, d.p); d.tipo = "v"; d.i += 1; } })
+  .on("drag", ev => {
+    const d = ev.subject.d, g = proy.invert([ev.x, ev.y]); if(!g) return;
+    const p = [+g[1].toFixed(5), +g[0].toFixed(5)];
+    if(d.tipo === "v") d.z.vertices[d.i] = p;
+    else if(d.tipo === "c") d.z.centro = p;
+    else d.z.radioKm = Math.max(0.05, +G.haversineKm(d.z.centro, p).toFixed(3));
+    rehacer(d.z, false); repintar();
+  })
+  .on("end", ev => rehacer(ev.subject.d.z, true));
+function asas(){
+  if(!cerca.edita) return [];
+  return cerca.zonas.flatMap(z => z.tipo === "circulo"
+    ? [{z, tipo:"c", p:z.centro}, {z, tipo:"r", p:G.puntoDestino(z.centro, 90, z.radioKm)}]
+    : z.vertices.flatMap((v, i, a) => { const w = a[(i+1) % a.length];
+        return [{z, i, tipo:"v", p:v}, {z, i, tipo:"m", p:[(v[0]+w[0])/2, (v[1]+w[1])/2]}]; }));
+}
+const rAsa = d => (d.tipo === "m" ? 3.5 : 6)/k;
+
+/* --- pintura --- */
+let repintando = false;
+const repintar = () => { if(repintando) return; repintando = true; requestAnimationFrame(() => { repintando = false; pintarGeocerca(); }); };
+const xy = p => proy([p[1], p[0]]);
 function pintarGeocerca(){
-  const c = cerca.centro, datos = c && vistaActual() === "cerca" ? [c] : [];
+  const ver = vistaActual() === "cerca" && !!G;
+  if(!ver && cerca.dibujo) terminarDibujo(false);
+  const c = cerca.centro, datos = c && ver ? [c] : [];
   gGeo.selectAll("path.geocerca").data(datos).join("path").attr("class","geocerca").attr("d", d => ruta(circuloGeo(d, cerca.radio)));
   gGeo.selectAll("circle.yo-onda").data(datos).join("circle").attr("class","yo-onda").attr("r", 14/k).attr("cx", d => proy([d.lon,d.lat])[0]).attr("cy", d => proy([d.lon,d.lat])[1]);
   gGeo.selectAll("circle.yo").data(datos).join("circle").attr("class","yo").attr("r", 5/k).attr("cx", d => proy([d.lon,d.lat])[0]).attr("cy", d => proy([d.lon,d.lat])[1]);
-  if(!datos.length) gEst.selectAll("circle.dentro").classed("dentro", false);
+  if(!ver) gEst.selectAll("circle.dentro").classed("dentro", false);
+  // geocercas guardadas (resaltadas si alguien está dentro)
+  gGeo.selectAll("path.gc-zona").data(ver ? cerca.zonas : [], z => z.id).join("path")
+    .attr("class", z => `gc-zona${z.id === cerca.sel ? " sel" : ""}${quienEsta(z.id).length ? " ocupada" : ""}`)
+    .attr("d", z => ruta(geomD3(z.g)));
+  // borrador del polígono que se está dibujando
+  const dib = ver && cerca.dibujo ? cerca.dibujo : null;
+  const linea = dib ? [...dib.pts, ...(dib.cursor ? [dib.cursor] : [])] : [];
+  gGeo.selectAll("path.gc-borrador").data(linea.length > 1 ? [linea] : []).join("path").attr("class","gc-borrador")
+    .attr("d", l => d3.line()(l.map(xy)));
+  gGeo.selectAll("circle.gc-punto").data(dib ? dib.pts : []).join("circle").attr("class", (_, i) => `gc-punto${i === 0 ? " primero" : ""}`)
+    .attr("r", 3.5/k).attr("cx", p => xy(p)[0]).attr("cy", p => xy(p)[1]);
+  // asas de edición
+  gGeo.selectAll("circle.gc-asa").data(ver ? asas() : []).join("circle").attr("class", d => `gc-asa ${d.tipo}`)
+    .attr("r", rAsa).attr("cx", d => xy(d.p)[0]).attr("cy", d => xy(d.p)[1])
+    .call(arrastre)
+    .on("click", ev => ev.stopPropagation())
+    .on("dblclick", (ev, d) => { ev.stopPropagation();   // doble clic en un vértice lo borra (mínimo 3)
+      if(d.tipo === "v" && d.z.vertices.length > 3){ d.z.vertices.splice(d.i, 1); rehacer(d.z, true); pintarGeocerca(); } });
+  // tú (seguimiento) y unidades de la flotilla
+  gGeo.selectAll("circle.gc-yo").data(ver && cerca.yo ? [cerca.yo] : []).join("circle").attr("class","gc-yo")
+    .attr("r", 5/k).attr("cx", l => xy([l.lat, l.lon])[0]).attr("cy", l => xy([l.lat, l.lon])[1]);
+  gGeo.selectAll("circle.gc-unidad").data(ver ? [...cerca.unidades.values()] : [], u => u.id).join(
+      e => e.append("circle").attr("class","gc-unidad").call(s => s.append("title")))
+    .attr("r", 4.5/k).attr("fill", u => u.color).attr("cx", u => xy([u.lat, u.lon])[0]).attr("cy", u => xy([u.lat, u.lon])[1])
+    .select("title").text(u => u.nombre);
 }
+zoom.on("zoom.geocerca", () => {
+  gGeo.selectAll("circle.gc-asa").attr("r", rAsa);
+  gGeo.selectAll("circle.gc-punto").attr("r", 3.5/k);
+  gGeo.selectAll("circle.gc-yo").attr("r", 5/k);
+  gGeo.selectAll("circle.gc-unidad").attr("r", 4.5/k);
+});
+function pintarZonas(){
+  if(!G) return;
+  const p = prodActual();
+  $("gc-lista").innerHTML = cerca.zonas.length ? cerca.zonas.map(z => {
+    const n = EST.filter(e => z.g.contiene([e.lat, e.lon])).length, q = quienEsta(z.id);
+    const desc = z.tipo === "circulo" ? `círculo ${fmt1(z.radioKm)} km` : `polígono ${z.vertices.length} vértices`;
+    return `<li data-id="${esc(z.id)}"${z.id === cerca.sel ? ' class="sel"' : ""}>
+      <span><input class="gc-nombre" value="${esc(z.nombre)}" aria-label="Nombre de la geocerca" maxlength="40">
+      <small>${desc} · ${fmt(n)} gasolineras${q.length ? ` · <b class="ocupada">dentro: ${esc(q.join(", "))}</b>` : ""}</small></span>
+      <button type="button" class="gc-ver" title="Ver gasolineras dentro" aria-label="Ver ${esc(z.nombre)}">⌖</button>
+      <button type="button" class="quitar" title="Borrar" aria-label="Borrar ${esc(z.nombre)}">✕</button></li>`;
+  }).join("") : `<li class="nota">Sin geocercas. Guarda el radio actual o dibuja un polígono.</li>`;
+  $("gc-guardar").disabled = !cerca.centro;
+  $("gc-exportar").disabled = !cerca.zonas.length;
+}
+$("gc-lista").addEventListener("click", ev => {
+  const id = ev.target.closest("li[data-id]")?.dataset.id; if(!id) return;
+  if(ev.target.closest(".quitar")) borrarZona(id);
+  else if(ev.target.closest(".gc-ver")) verZona(id);
+});
+$("gc-lista").addEventListener("change", ev => {
+  const z = cerca.zonas.find(z => z.id === ev.target.closest("li[data-id]")?.dataset.id);
+  if(z && ev.target.matches(".gc-nombre")){ z.nombre = ev.target.value.trim() || z.nombre; rehacer(z, true); }
+});
+$("gc-guardar").onclick = () => { const c = cerca.centro; if(c && G) agregarZona({tipo:"circulo", centro:[c.lat, c.lon], radioKm:cerca.radio, nombre:c.rot}); };
+$("gc-dibujar").onclick = () => cerca.dibujo ? terminarDibujo(true) : empezarDibujo();
+$("gc-editar").onclick = () => {
+  if(cerca.dibujo) terminarDibujo(false);
+  cerca.edita = !cerca.edita; $("gc-editar").setAttribute("aria-pressed", cerca.edita);
+  $("gc-msj").textContent = cerca.edita ? "Arrastra vértices, centros o el borde del círculo. Arrastra un punto chico para agregar un vértice; doble clic en un vértice lo borra." : "";
+  pintarGeocerca();
+};
+$("gc-exportar").onclick = exportarZonas;
+if(G){ cerca.zonas = leerZonas().map(z => ({...z, g:aGeocerca(z)})); pintarZonas(); }
+else $("gc-msj").textContent = "No cargó el módulo de geocercas (/geo/index.js).";
+
 $("cerca-gps").onclick = () => {
-  if(!navigator.geolocation){ $("cerca-msj").textContent = "Este navegador no da la ubicación. Usa «Elegir en el mapa»."; return; }
+  if(!G){ $("cerca-msj").textContent = "No cargó el módulo de ubicación (/geo/index.js)."; return; }
   $("cerca-msj").textContent = "Pidiendo tu ubicación al navegador…";
-  navigator.geolocation.getCurrentPosition(
-    pos => ponerCentro({lat:pos.coords.latitude, lon:pos.coords.longitude, rot:"Mi ubicación"}, "gps"),
-    err => { $("cerca-msj").textContent = `No se obtuvo la ubicación (${err.message}). Usa «Elegir en el mapa».`; },
-    {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
+  G.obtenerUbicacion({timeout:10000, maximumAge:60000})
+    .then(l => ponerCentro({lat:l.lat, lon:l.lon, rot:"Mi ubicación"}, "gps"))
+    .catch(err => { $("cerca-msj").textContent = `${err.message} Usa «Elegir en el mapa».`; });
 };
 $("cerca-mapa").onclick = () => ponerEleccion(ui.elige === "cerca" ? null : "cerca");
 $("cerca-radio").addEventListener("input", ev => { cerca.radio = +ev.target.value; $("cerca-radio-val").textContent = `${cerca.radio} km`; pintarGeocerca(); });

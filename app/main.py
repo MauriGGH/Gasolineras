@@ -29,6 +29,8 @@ ARCHIVOS = ("datos_mapa.json", "estaciones.json", "estados.geojson")
 app = FastAPI(title="Ojo de Dios · Gasolineras MX", version="0.2.0")
 app.mount("/static", StaticFiles(directory=ESTATICOS), name="static")
 app.mount("/api/ruteo", api_ruteo)
+# Módulo de geocercas y ubicación del navegador (web/geo): lo importa app.js con import("/geo/index.js")
+app.mount("/geo", StaticFiles(directory=RAIZ / "web" / "geo"), name="geo")
 
 
 def leer_json(nombre: str):
