@@ -1,14 +1,22 @@
-# Uso:  docker compose up --build      y abrir http://localhost:8000
-# Para otro puerto en el equipo:  PUERTO=8080 docker compose up --build
+# Mapa de gasolineras.
+#   Solo la app (motor de rutas de ejemplo, arranca en segundos):
+#       docker compose up --build             y abrir http://localhost:8000
+#   App + OSRM con las carreteras reales de México (primera vez: descarga ~700 MB y prepara ~20-40 min):
+#       docker compose -f docker-compose.yml -f docker-compose.osrm.yml up --build
+#   Otro puerto:  PUERTO=8080 docker compose up --build
 services:
   web:
     build: .
-    image: ojo-de-dios-robo-vehicular
+    image: gasolineras-mx
     ports:
       - "${PUERTO:-8000}:8000"
+    environment:
+      # Sin OSRM la app usa su red vial de ejemplo (A*/Dijkstra). Ver docker-compose.osrm.yml.
+      GASRUTA_MOTOR: "${GASRUTA_MOTOR:-}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if b'\"ok\"' in urllib.request.urlopen('http://127.0.0.1:8000/api/salud').read() else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 60s
