@@ -1,0 +1,59 @@
+# Agrega OSRM (rutas reales por carretera en todo México) a la app.
+#   docker compose -f docker-compose.yml -f docker-compose.osrm.yml up --build
+# La primera vez descarga el mapa de OpenStreetMap de México (Geofabrik) a data/osm/ y lo prepara.
+# Necesita ~4 GB de disco y ~6 GB de RAM libres para Docker durante la preparación. Las siguientes
+# veces arranca en segundos porque reutiliza data/osm/. Para actualizar el mapa, borra data/osm/.
+services:
+  osrm-descarga:
+    image: curlimages/curl:8.10.1
+    user: "0"
+    volumes:
+      - ./data/osm:/data
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        if [ -s /data/mexico-latest.osm.pbf ]; then echo 'PBF de México ya descargado';
+        else curl -fL --retry 5 -C - -o /data/mexico-latest.osm.pbf.part
+        https://download.geofabrik.de/north-america/mexico-latest.osm.pbf
+        && mv /data/mexico-latest.osm.pbf.part /data/mexico-latest.osm.pbf; fi
+
+  osrm-preparar:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    volumes:
+      - ./data/osm:/data
+    depends_on:
+      osrm-descarga:
+        condition: service_completed_successfully
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        if [ -s /data/mexico-latest.osrm.mldgr ]; then echo 'OSRM ya preparado';
+        else osrm-extract -p /opt/car.lua /data/mexico-latest.osm.pbf
+        && osrm-partition /data/mexico-latest.osrm
+        && osrm-customize /data/mexico-latest.osrm; fi
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    volumes:
+      - ./data/osm:/data
+    depends_on:
+      osrm-preparar:
+        condition: service_completed_successfully
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "10000", "/data/mexico-latest.osrm"]
+    ports:
+      - "${PUERTO_OSRM:-5000}:5000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/5000' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  web:
+    environment:
+      GASRUTA_MOTOR: osrm
+      OSRM_URL: http://osrm:5000
+    depends_on:
+      osrm:
+        condition: service_healthy

@@ -1,4 +1,6 @@
 fastapi==0.115.6
-uvicorn==0.34.0
+uvicorn[standard]==0.34.0
 pydantic>=2.7
 websockets>=12  # WebSocket de la flotilla en vivo
+# Rutas de surtido de pipas (VRP). Sin ella se usa la heurística de routing/pipa.py.
+ortools>=9.10

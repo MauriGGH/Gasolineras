@@ -10,9 +10,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Valida estaciones, precios y focos y genera los JSON del mapa.
-# Si las sumas no cuadran, la construcción de la imagen falla aquí.
+# Genera los JSON del mapa en la construcción, para que la imagen arranque aunque no haya red.
+# Intenta bajar los datos del día (rama `datos`); si no puede, usa los de ejemplo con aviso DEMO.
+# Si una validación falla, la construcción falla aquí.
 RUN python scripts/construir_datos.py
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Al arrancar vuelve a construir los datos para tomar el corte más reciente; si falla, se queda con los de la imagen.
+CMD ["sh", "-c", "python scripts/construir_datos.py || echo 'Aviso: se usan los datos de la imagen'; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
