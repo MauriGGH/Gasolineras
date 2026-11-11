@@ -1,18 +1,16 @@
-# Ojo de Dios · Robo vehicular MX
+# Ojo de Dios · Gasolineras MX
 
-Aplicación web: mapa interactivo nacional de vehículos asegurados robados.
-Servidor en Python (FastAPI) + interfaz estática (D3). Corre en localhost y se
-despliega igual en un servidor.
+Mapa interactivo nacional de gasolineras: precio por entidad y marca, estaciones,
+gasolineras cercanas con geocerca, ruta entre estados con paradas de recarga óptimas,
+surtido de pipas y tomas clandestinas reportadas (solo agregados por estado y
+municipio, como referencia). Servidor en Python (FastAPI) + interfaz estática (D3),
+con el diseño del mapa "Ojo de Dios".
 
-## Arranque con Docker (recomendado para probar en otro equipo)
+## Arranque con Docker
 
-    git clone <url-del-repositorio>
-    cd ojo-de-dios-robo-vehicular
     docker compose up --build
 
-Abrir http://localhost:8000. Para detener: `Ctrl+C` y `docker compose down`.
-Otro puerto: en PowerShell `$env:PUERTO=8080; docker compose up --build`.
-Al construir la imagen se validan los datos; si una suma no cuadra, la construcción falla.
+Abrir http://localhost:8000.
 
 ## Arranque en Windows sin Docker
 Doble clic en `iniciar.bat`, o a mano:
@@ -22,35 +20,25 @@ Doble clic en `iniciar.bat`, o a mano:
     .venv\Scripts\python scripts\construir_datos.py
     .venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 
-Abrir http://127.0.0.1:8000  ·  Documentación de la API: http://127.0.0.1:8000/docs
+Abrir http://127.0.0.1:8000 · API: http://127.0.0.1:8000/docs
+
+## Datos
+- Reales: corre el pipeline (`python -m pipeline.correr`, ver README.md y
+  `docs/contrato-datos.md`). Deja `data/curated/estaciones.geojson` y el histórico de precios.
+- Sin datos reales, `construir_datos.py` usa las estaciones SINTÉTICAS de
+  `data/ejemplo/` y la interfaz muestra un aviso **DEMO** permanente.
+- Tomas clandestinas: `data/manual/huachicol_estados.csv` y `huachicol_municipios.csv`,
+  solo conteos con fuente y periodo. Nunca puntos de tomas ni ductos.
 
 ## Estructura
-- `app/main.py`            servidor y API de solo lectura.
-- `app/static/`            interfaz: `index.html`, `estilos.css`, `app.js`. `vendor/d3.min.js` es D3 7.9.0 local (sin CDN).
-- `app/static/siluetas.js`  siluetas genéricas de vehículos por tipo (solo dibujos SVG, sin datos ni marcas).
-- `Dockerfile`, `docker-compose.yml`  contenedor para localhost o servidor.
-- `scripts/construir_datos.py`  valida los CSV contra los totales nacionales y genera los JSON.
-- `datos/crudos/`          CSV transcritos del reporte AMIS de diciembre de 2025 y límites estatales.
-- `datos/procesados/`      salida generada; no se edita a mano.
+- `app/main.py`: servidor, API de datos del mapa y monta el motor en `/api/ruteo`.
+- `app/static/`: interfaz (`index.html`, `estilos.css`, `app.js`, `siluetas.js`, D3 local).
+- `scripts/construir_datos.py`: valida y genera `datos/procesados/*.json`.
+- `pipeline/`: ingesta CNE, OSM, DENUE, Profeco; cruce y agregados.
+- `routing/`: estaciones cercanas, ruta con recargas (Dijkstra sobre estación × combustible),
+  surtido de pipas (VRP) y flotilla en tiempo real (WebSocket).
+- `geo/`, `web/geo/`: distancias, geocercas y geocodificación.
+- `capturas/`: capturas de la interfaz.
 
-## API
-| Ruta | Devuelve |
-|---|---|
-| `/api/salud` | si los datos procesados existen |
-| `/api/datos` | nacional, entidades, submarcas, municipios |
-| `/api/entidades/{nombre}` | ficha de una entidad |
-| `/api/geo/estados` | límites estatales en GeoJSON |
-
-## Fuentes
-- AMIS, Centro Estadístico, «Robo de vehículos asegurados», reporte 2025-M12
-  (https://centroestadisticoamis.mx/descarga-reporte-autos/).
-- Vehículo más robado por entidad: AMIS vía prensa (marzo de 2026); sin periodo explícito. Dato secundario.
-- `estados_mx.geojson`: límites generalizados de un repositorio público sin licencia declarada
-  (github.com/angelnmara/geojson). Sustituir por el Marco Geoestadístico de INEGI antes de publicar.
-- `lat_ref`/`lon_ref` de municipios: ubicación aproximada de la cabecera, solo para simbología.
-
-## Pendientes conocidos
-- Los conteos son absolutos; falta normalizar por parque vehicular (INEGI).
-- Solo cubre vehículos asegurados. Falta la capa SESNSP (carpetas de investigación, nivel municipal).
-- % de violencia y recuperación solo están cargados para 2025.
-- La interfaz carga tipografías de Google Fonts; para un servidor sin salida a internet hay que alojarlas localmente.
+## Atajos
+1–5 indicador · G gasolineras cerca · R ruta · P panorama · C capas · F fuentes · Esc cerrar.

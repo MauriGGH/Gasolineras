@@ -1,4 +1,4 @@
-# Imagen de la aplicación "Ojo de Dios · Robo vehicular MX"
+# Imagen de la aplicación "Ojo de Dios · Gasolineras MX"
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Valida los CSV contra los totales nacionales y genera los JSON.
+# Valida estaciones, precios y focos y genera los JSON del mapa.
 # Si las sumas no cuadran, la construcción de la imagen falla aquí.
 RUN python scripts/construir_datos.py
 
