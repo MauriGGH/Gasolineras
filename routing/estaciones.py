@@ -75,3 +75,12 @@ class IndiceEstaciones:
 @lru_cache(maxsize=4)
 def indice_por_defecto(ruta: str | None = None) -> IndiceEstaciones:
     return IndiceEstaciones(cargar_estaciones(ruta or ruta_por_defecto()))
+
+
+@lru_cache(maxsize=1)
+def permisos_a_evitar() -> frozenset[str]:
+    """Permisos marcados por Profeco que el pipeline deja en `data/curated/evitar_permisos.json`."""
+    ruta = RAIZ / "data" / "curated" / "evitar_permisos.json"
+    if not ruta.exists():
+        return frozenset()
+    return frozenset(json.loads(ruta.read_text(encoding="utf-8")).get("permisos", []))

@@ -6,3 +6,4 @@ data/raw/
 data/curated/
 data/osm/
 *.egg-info/
+data/geo/
