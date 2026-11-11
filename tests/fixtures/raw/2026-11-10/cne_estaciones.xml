@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<places>
+  <place place_id="10"><name>SERVICIO OXXO GAS INSURGENTES SA DE CV</name><cre_id>PL/100/EXP/ES/2015</cre_id><location><x>-99.1500</x><y>19.4000</y></location></place>
+  <place place_id="11"><name>GASOLINERA LOS PINOS SA DE CV</name><cre_id>PL/101/EXP/ES/2016</cre_id><location><x>-99.1600</x><y>19.4100</y></location></place>
+  <place place_id="12"><name>ESTACION EL ROBLE</name><cre_id>PL/102/EXP/ES/2017</cre_id><location><x>-98.7500</x><y>20.1000</y></location></place>
+  <place place_id="13"><name>COORDENADA ROTA</name><cre_id>PL/103/EXP/ES/2017</cre_id><location><x>19.4</x><y>-99.1</y></location></place>
+  <place place_id="14"><name>SERVICIO TOTAL DEL NORTE</name><cre_id>PL/104/EXP/ES/2018</cre_id><location><x>-98.7600</x><y>20.1100</y></location></place>
+</places>

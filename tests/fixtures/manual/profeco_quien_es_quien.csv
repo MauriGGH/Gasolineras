@@ -1,0 +1,4 @@
+fecha,permiso,nombre,entidad,producto,precio,resultado,fuente,url
+2026-09-01,PL/100/EXP/ES/2015,,Ciudad de México,regular,23.49,ok,Profeco QQ,https://example.org/qq1
+2026-10-27,,Estacion El Roble,Hidalgo,,,litros_incompletos,Profeco QQ,https://example.org/qq2
+2026-10-27,PL/999/EXP/ES/2020,,Jalisco,,,se_nego,Profeco QQ,https://example.org/qq2
