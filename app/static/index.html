@@ -171,9 +171,10 @@
       </section>
 
       <section data-vista="ruta" hidden>
-        <div class="seg dos" id="ruta-modo">
+        <div class="seg tres" id="ruta-modo">
           <button type="button" data-modo="viaje" aria-pressed="true">Viaje y recargas</button>
           <button type="button" data-modo="surtido" aria-pressed="false">Surtido con pipa</button>
+          <button type="button" data-modo="flotilla" aria-pressed="false">Flotilla en vivo</button>
         </div>
         <div id="ruta-viaje" class="bloque">
           <div class="puntos">
@@ -215,6 +216,38 @@
           <p class="nota">Clic en las gasolineras del mapa (o «Agregar al surtido» en su ficha) para armar los pedidos.</p>
           <ol class="lista-est" id="s-pedidos"></ol>
           <button type="button" class="btn-ancho" id="s-calcular">▶ Planear surtido</button>
+        </div>
+        <div id="ruta-flotilla" class="bloque" hidden>
+          <p class="nota">Varias unidades a la vez: cada una con su ruta, avance, km y minutos restantes y hora de llegada.
+            Se actualiza en vivo con las posiciones GPS que lleguen a <code>/api/ruteo/flotilla/posiciones</code> o con la simulación.</p>
+          <div class="flota-con"><i id="f-luz" class="luz"></i><span id="f-estado">Sin conexión</span></div>
+          <div class="seg dos">
+            <button type="button" id="f-ejemplo">Cargar 6 de ejemplo</button>
+            <button type="button" id="f-simular" aria-pressed="false">▶ Simular</button>
+          </div>
+          <div class="campos">
+            <label>Velocidad de simulación <span><select id="f-vel">
+              <option value="60">×60 (1 h por min)</option><option value="240" selected>×240</option><option value="900">×900</option></select></span></label>
+          </div>
+          <ol class="lista-est flota" id="f-unidades"></ol>
+          <div class="eti">Alertas</div>
+          <ol class="flota-alertas" id="f-alertas"><li class="nota">Sin alertas.</li></ol>
+          <div class="eti">Agregar unidad</div>
+          <div class="puntos">
+            <label class="eti" for="f-origen">Sale de</label>
+            <div class="punto"><select id="f-origen"></select><button type="button" class="mini" data-elige="f-origen">✛ mapa</button></div>
+            <label class="eti" for="f-destino">Va a</label>
+            <div class="punto"><select id="f-destino"></select><button type="button" class="mini" data-elige="f-destino">✛ mapa</button></div>
+          </div>
+          <div>
+            <div class="eti">Unidad</div>
+            <div class="vehiculos" id="f-tipos"></div>
+          </div>
+          <div class="campos">
+            <label>Nombre <span><input type="text" id="f-nombre" maxlength="40" placeholder="Unidad 1"></span></label>
+            <label>Trae <span><input type="number" id="f-litros" min="0" max="62000" step="1"> l</span></label>
+          </div>
+          <button type="button" class="btn-ancho" id="f-agregar">＋ Agregar unidad</button>
         </div>
         <p class="nota" id="ruta-msj" aria-live="polite"></p>
         <div id="ruta-res"></div>
