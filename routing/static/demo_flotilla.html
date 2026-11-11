@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flotilla en vivo · demo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html, body, #mapa { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+  #panel { position: absolute; top: 10px; right: 10px; z-index: 1000; background: #fff; padding: 10px 12px;
+           border-radius: 8px; box-shadow: 0 2px 8px #0003; max-width: 320px; font-size: 13px; }
+  #panel button { margin: 2px 4px 6px 0; }
+  .fila { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  #alertas { max-height: 140px; overflow: auto; color: #a40; }
+</style>
+</head>
+<body>
+<div id="mapa"></div>
+<div id="panel">
+  <b>Flotilla en vivo</b> <small>(demo del backend; el mapa final va en el front de referencia)</small><br>
+  <button id="ejemplo">Cargar 5 unidades de ejemplo</button>
+  <button id="sim">▶ Simular</button>
+  <div id="lista"></div>
+  <div id="alertas"></div>
+</div>
+<script>
+const mapa = L.map('mapa').setView([21.5, -100.5], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap'}).addTo(mapa);
+const capas = {}; const datos = {};
+const ws = new WebSocket(location.origin.replace('http', 'ws') + '/flotilla/ws');
+
+function pintar(v) {
+  datos[v.id] = {...(datos[v.id] || {}), ...v};
+  const c = capas[v.id] || (capas[v.id] = {});
+  if (v.linea) {
+    if (c.linea) c.linea.remove();
+    c.linea = L.polyline(v.linea.map(([lon, lat]) => [lat, lon]), {color: v.color, weight: 4, opacity: .7}).addTo(mapa);
+  }
+  if (!c.marca) c.marca = L.circleMarker([v.lat, v.lon], {radius: 8, color: '#000', weight: 1, fillColor: v.color, fillOpacity: 1}).addTo(mapa);
+  c.marca.setLatLng([v.lat, v.lon]).bindTooltip(`${v.nombre}: ${v.km_restante} km · ${Math.round(v.min_restante)} min`);
+  lista();
+}
+function lista() {
+  document.getElementById('lista').innerHTML = Object.values(datos).map(v =>
+    `<div class="fila"><span class="punto" style="background:${v.color}"></span>${v.nombre}: ${v.llego ? 'llegó' :
+      `${v.km_restante} km, ${Math.round(v.min_restante)} min`}</div>`).join('');
+}
+ws.onmessage = (m) => {
+  const e = JSON.parse(m.data);
+  if (e.tipo === 'estado') {
+    const lineas = {};
+    e.geojson.features.filter(f => f.properties.tipo === 'ruta_vehiculo').forEach(f => lineas[f.properties.id] = f.geometry.coordinates);
+    e.geojson.features.filter(f => f.properties.tipo === 'vehiculo').forEach(f => pintar({...f.properties, linea: lineas[f.properties.id]}));
+  } else if (e.tipo === 'ruta' || e.tipo === 'posicion') pintar(e.vehiculo);
+  else if (e.tipo === 'eliminado') { Object.values(capas[e.id] || {}).forEach(l => l.remove()); delete capas[e.id]; delete datos[e.id]; lista(); }
+  else if (e.tipo === 'alerta') document.getElementById('alertas').insertAdjacentHTML('afterbegin', `<div>⚠ ${e.mensaje}</div>`);
+};
+const CDMX = [19.4326, -99.1332];
+document.getElementById('ejemplo').onclick = () => fetch('/flotilla/vehiculos', {method: 'POST', headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({vehiculos: [
+    {id: 'u1', nombre: 'Unidad 1 → Monterrey', posicion: CDMX, destinos: [[25.6866, -100.3161]],
+     combustible: {tanque_l: 50, rendimiento_km_l: 10, combustible_inicial_l: 30}},
+    {id: 'u2', nombre: 'Unidad 2 → Guadalajara', posicion: CDMX, destinos: [[20.6597, -103.3496]]},
+    {id: 'u3', nombre: 'Unidad 3 → Veracruz', posicion: CDMX, destinos: [[19.1738, -96.1342]]},
+    {id: 'u4', nombre: 'Unidad 4 → Zacatecas', posicion: [20.5888, -100.3899], destinos: [[22.7709, -102.5833]]},
+    {id: 'u5', nombre: 'Unidad 5 → Torreón', posicion: [25.6866, -100.3161], destinos: [[25.5428, -103.4068]]},
+  ]})});
+let simulando = false;
+document.getElementById('sim').onclick = (ev) => {
+  simulando = !simulando; ev.target.textContent = simulando ? '⏸ Pausar' : '▶ Simular';
+  fetch('/flotilla/simulacion', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({activa: simulando, cada_seg: 0.5, acelerar: 240})});
+};
+</script>
+</body>
+</html>

@@ -40,9 +40,10 @@ def ruta(puntos: list[Punto], base_url: str = OSRM_URL) -> dict:
     }
 
 
-def tabla(puntos: list[Punto], base_url: str = OSRM_URL) -> dict:
-    """Matriz de distancias (km) y tiempos (min) entre todos los puntos."""
-    d = _get(f"{base_url}/table/v1/driving/{_coords(puntos)}?annotations=distance,duration")
+def tabla(puntos: list[Punto], base_url: str = OSRM_URL, fuentes: list[int] | None = None) -> dict:
+    """Matriz de distancias (km) y tiempos (min). Filas = `fuentes` (todas si es None)."""
+    extra = f"&sources={';'.join(map(str, fuentes))}" if fuentes is not None else ""
+    d = _get(f"{base_url}/table/v1/driving/{_coords(puntos)}?annotations=distance,duration{extra}")
     return {
         "distancia_km": [[v / 1000 if v is not None else float("inf") for v in fila] for fila in d["distances"]],
         "duracion_min": [[v / 60 if v is not None else float("inf") for v in fila] for fila in d["durations"]],
