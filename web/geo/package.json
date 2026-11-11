@@ -1,0 +1,10 @@
+{
+  "name": "@gasolineras/geo",
+  "version": "0.1.0",
+  "description": "Ubicación del usuario y geocercas en el navegador (mismo formato GeoJSON que geo/ en Python)",
+  "type": "module",
+  "main": "index.js",
+  "exports": { ".": "./index.js" },
+  "scripts": { "test": "node --test test/*.test.js" },
+  "license": "MIT"
+}
