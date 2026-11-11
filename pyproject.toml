@@ -8,6 +8,8 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 vrp = ["ortools>=9.10"]
+# Opcional: similitud de nombres más precisa en el cruce CNE/OSM/DENUE (sin ella se usa difflib)
+datos = ["rapidfuzz>=3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

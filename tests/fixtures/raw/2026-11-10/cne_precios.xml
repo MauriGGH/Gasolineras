@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<places>
+  <place place_id="10"><gas_price type="regular">23.49</gas_price><gas_price type="premium">25.89</gas_price><gas_price type="diesel">25.10</gas_price></place>
+  <place place_id="11"><gas_price type="regular">23.99</gas_price><gas_price type="diesel">2.5</gas_price></place>
+  <place place_id="12"><gas_price type="regular">22.90</gas_price><gas_price type="premium">24.50</gas_price></place>
+  <place place_id="14"><gas_price type="regular">23.10</gas_price></place>
+</places>

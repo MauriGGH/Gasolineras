@@ -16,8 +16,8 @@ REGLAS: list[tuple[str, str]] = [
     (r"\bshell\b", "Shell"),
     (r"\bmobil\b|exxon", "Mobil"),
     (r"\bchevron\b|\btexaco\b", "Chevron"),
-    (r"\barco\b", "Arco"),
-    (r"\btotal ?energies\b|\btotal\b", "TotalEnergies"),
+    (r"^arco$|\barco (gas|mexico)\b", "Arco"),  # "arco" suelto da falsos positivos (Arcos, Arco Norte)
+    (r"\btotal ?energies\b|^total( mexico)?$", "TotalEnergies"),  # evita "Servicio Total"
     (r"\brepsol\b", "Repsol"),
     (r"\bhidrosina\b", "Hidrosina"),
     (r"\bpetro ?7\b|\bpetro seven\b|\b7-?eleven\b", "Petro-7"),
@@ -53,3 +53,34 @@ def normalizar_marca(*textos: str | None) -> str:
             if patron.search(t):
                 return marca
     return "Independiente"
+
+
+_SUFIJOS = re.compile(
+    r"\b(s ?a ?p ?i|s ?a|s ?de ?r ?l|de ?c ?v|sapi|sa|cv|rl|"
+    r"gasolinera|gasolineria|estacion|de servicio|servicio|servicios|grupo|gasolineras)\b"
+)
+
+
+def nombre_comparable(texto: str | None) -> str:
+    """Nombre sin acentos, signos ni sufijos societarios ("SA de CV", "Gasolinera"...)."""
+    if not texto:
+        return ""
+    t = re.sub(r"[^a-z0-9 ]", " ", _limpiar(texto))
+    return re.sub(r"\s+", " ", _SUFIJOS.sub(" ", t)).strip()
+
+
+def similitud_nombre(a: str | None, b: str | None) -> float:
+    """0..1. Usa rapidfuzz (token_set_ratio) si está instalado; si no, difflib."""
+    a, b = nombre_comparable(a), nombre_comparable(b)
+    if not a or not b:
+        return 0.0
+    try:
+        from rapidfuzz import fuzz
+    except ImportError:
+        from difflib import SequenceMatcher
+
+        ta, tb = set(a.split()), set(b.split())
+        if ta <= tb or tb <= ta:
+            return 1.0
+        return SequenceMatcher(None, a, b).ratio()
+    return fuzz.token_set_ratio(a, b) / 100.0
