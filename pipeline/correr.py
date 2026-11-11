@@ -49,20 +49,19 @@ def compacto(estaciones: list[dict]) -> dict:
 
 
 def huachicol_estados_resumen(data: pathlib.Path = DATA) -> dict:
-    """Último periodo anual por producto, por estado, sin geometría (panel / tooltip)."""
+    """Año anual con más estados reportados, por producto, sin geometría (panel / tooltip)."""
     salida: dict[str, dict] = {}
     for producto in ("petroliferos", "gas_lp"):
         filas = [f for f in huachicol.tabla("estado", producto, data) if f.get("periodo") == "anual"]
         if not filas:
             continue
-        anio = max(int(f["anio"]) for f in filas)
-        salida[producto] = {
-            "anio": anio,
-            "periodo": "anual",
-            "estados": {f["cve_ent"].zfill(2): {"estado": f["estado"], "tomas_reportadas": int(f["tomas_reportadas"]),
-                                                "fuente": f["fuente"], "url": f["url"]}
-                        for f in filas if int(f["anio"]) == anio},
-        }
+        anio = huachicol.anio_con_mas_cobertura(filas)
+        estados: dict[str, dict] = {}
+        for f in filas:   # la primera fila de cada estado es la fuente preferida
+            if int(f["anio"]) == anio:
+                estados.setdefault(f["cve_ent"].zfill(2), {"estado": f["estado"], "tomas_reportadas": int(f["tomas_reportadas"]),
+                                                           "fuente": f["fuente"], "url": f["url"]})
+        salida[producto] = {"anio": anio, "periodo": "anual", "estados": estados}
     return salida
 
 
