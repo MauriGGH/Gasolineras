@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- ?v= obliga al navegador a pedir la versión nueva cuando cambian estos archivos; súbelo al modificarlos -->
-<link rel="stylesheet" href="/static/estilos.css?v=3">
+<link rel="stylesheet" href="/static/estilos.css?v=4">
 </head>
 <body>
 <!-- Secuencia de arranque: cada línea reporta una comprobación real -->
@@ -168,6 +168,23 @@
         </div>
         <p class="nota" id="cerca-msj" aria-live="polite"></p>
         <ol class="lista-est" id="cerca-lista"></ol>
+        <div class="gc">
+          <div class="eti">Geocercas · alertas de entrada y salida</div>
+          <div class="seg tres">
+            <button type="button" id="gc-guardar" disabled>＋ Guardar radio</button>
+            <button type="button" id="gc-dibujar" aria-pressed="false">✎ Dibujar polígono</button>
+            <button type="button" id="gc-editar" aria-pressed="false">⇄ Editar</button>
+          </div>
+          <ul class="gc-lista" id="gc-lista"></ul>
+          <div class="seg tres">
+            <button type="button" id="gc-seguir" aria-pressed="false">◉ Seguirme</button>
+            <button type="button" id="gc-flotilla" aria-pressed="false">⛟ Flotilla</button>
+            <button type="button" id="gc-exportar" disabled>⇩ GeoJSON</button>
+          </div>
+          <button type="button" class="btn-ancho" id="gc-demo" hidden>▶ Unidades de prueba</button>
+          <p class="nota" id="gc-msj" aria-live="polite"></p>
+          <ol class="gc-alertas" id="gc-alertas" aria-live="polite"></ol>
+        </div>
       </section>
 
       <section data-vista="ruta" hidden>
@@ -340,6 +357,6 @@
 
 <script src="/static/vendor/d3.min.js"></script>
 <script src="/static/siluetas.js?v=3"></script>
-<script src="/static/app.js?v=3"></script>
+<script src="/static/app.js?v=4"></script>
 </body>
 </html>
