@@ -5,9 +5,11 @@ notas periodísticas; cada fila lleva fuente y URL):
     data/manual/huachicol_municipios.csv   clave cve_mun (CVEGEO de 5 dígitos)
     data/manual/huachicol_estados.csv      clave cve_ent (2 dígitos)
 
-Columnas comunes: anio, periodo (anual | 1S | 1T ...), producto (petroliferos | gas_lp),
-tomas_reportadas, fuente, url, nota. Los conteos de periodos distintos NO se suman entre
-sí: cada coropleta es de un (anio, periodo, producto).
+Columnas comunes: anio, periodo (anual | ene-sep | 1S | 1T ...), producto (petroliferos |
+gas_lp | total_no_desglosado), tomas_reportadas, fuente, url, nota. Los conteos de periodos
+distintos NO se suman entre sí: cada coropleta es de un (anio, periodo, producto). Si dos
+fuentes reportan el mismo lugar y periodo, vale la primera fila y las otras quedan como
+`alternativas` (las cifras de Pemex, IGAVIM y la prensa no siempre coinciden).
 
 No se capturan coordenadas, ductos ni ningún detalle operativo.
 
@@ -56,11 +58,16 @@ def leer_conteos(ruta: pathlib.Path, anio: int | None = None, periodo: str | Non
                 continue
             periodos_vistos.add((fila["anio"], fila_periodo, fila_producto))
             clave = fila[cfg["clave"]].strip().zfill(cfg["largo"])
-            actual = conteos.setdefault(clave, {"tomas_reportadas": 0, "anio": int(fila["anio"]),
-                                                "periodo": fila_periodo, "producto": fila_producto, "fuentes": []})
-            actual["tomas_reportadas"] += int(fila["tomas_reportadas"])
-            actual["fuentes"].append({"fuente": fila["fuente"], "url": fila["url"], "anio": int(fila["anio"]),
-                                      "periodo": fila_periodo, "nota": (fila.get("nota") or "").strip()})
+            fuente = {"fuente": fila["fuente"], "url": fila["url"], "anio": int(fila["anio"]),
+                      "periodo": fila_periodo, "nota": (fila.get("nota") or "").strip()}
+            if clave in conteos:
+                # Mismo lugar y periodo con otra fuente: es otra versión de la misma cifra, no se suma.
+                # Vale la primera fila del CSV (la fuente preferida); las demás quedan como alternativas.
+                conteos[clave]["alternativas"].append({**fuente, "tomas_reportadas": int(fila["tomas_reportadas"])})
+                continue
+            conteos[clave] = {"tomas_reportadas": int(fila["tomas_reportadas"]), "anio": int(fila["anio"]),
+                              "periodo": fila_periodo, "producto": fila_producto, "fuentes": [fuente],
+                              "alternativas": []}
     if len(periodos_vistos) > 1:
         raise ValueError(
             f"Se mezclarían periodos distintos {sorted(periodos_vistos)}; indica anio, periodo y producto.")
@@ -82,6 +89,16 @@ def claves_sin_poligono(geojson: dict, conteos: dict[str, dict], campo_clave: st
     """Claves capturadas que no existen en los polígonos (CVEGEO mal tecleado, etc.)."""
     existentes = {str(f["properties"][campo_clave]).zfill(largo) for f in geojson["features"]}
     return sorted(set(conteos) - existentes)
+
+
+def anio_con_mas_cobertura(filas: list[dict]) -> int | None:
+    """Año con más lugares reportados (empate: el más reciente). Evita que una sola cifra
+    nueva deje la coropleta con un estado y 31 vacíos."""
+    por_anio: dict[int, set] = {}
+    for f in filas:
+        clave = f.get("cve_ent") or f.get("cve_mun")
+        por_anio.setdefault(int(f["anio"]), set()).add(clave)
+    return max(por_anio, key=lambda a: (len(por_anio[a]), a)) if por_anio else None
 
 
 def tabla(nivel: str = "estado", producto: str | None = None, raiz: pathlib.Path = RAIZ) -> list[dict]:
