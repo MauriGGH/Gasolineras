@@ -1,0 +1,5 @@
+{"elements": [
+  {"type": "node", "id": 1, "lat": 19.4102, "lon": -99.1601, "tags": {"amenity": "fuel", "brand": "Shell", "opening_hours": "24/7"}},
+  {"type": "way", "id": 2, "center": {"lat": 20.1013, "lon": -98.7506}, "tags": {"amenity": "fuel", "brand": "Pemex", "name": "El Roble"}},
+  {"type": "node", "id": 3, "lat": 25.0, "lon": -100.0, "tags": {"amenity": "fuel", "brand": "BP"}}
+]}

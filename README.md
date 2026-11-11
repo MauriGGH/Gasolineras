@@ -16,7 +16,8 @@ El frontend se adaptará del mapa de referencia (mismo diseño, cambio de tema).
 | `geo/` | Distancias, proyección sobre rutas, geocercas (círculo, polígono, multipolígono, corredor), monitor en vivo, índice espacial, georreferenciación |
 | `web/geo/` | Módulo JS para el navegador: ubicación del usuario y geocercas sobre el mismo GeoJSON |
 | `docs/` | Fuentes de datos, diseño del pipeline y del ruteo |
-| `data/manual/` | Datos capturados a mano con fuente (huachicol por municipio) |
+| `data/manual/` | Datos capturados a mano con fuente (huachicol por estado/municipio, Profeco) |
+| `data/geo/` | Polígonos INEGI de estados y municipios (no se versionan, ver docs/contrato-datos.md) |
 
 ## Uso rápido
 
@@ -25,10 +26,14 @@ python -m pip install -e ".[dev]"
 python -m pytest
 
 python -m pipeline.ingesta                       # baja CNE + OSM a data/raw/AAAA-MM-DD/
-python -m pipeline.transformar data/raw/AAAA-MM-DD  # -> data/curated/estaciones.geojson
+python -m pipeline.correr                        # todas las capas -> data/curated/ (ver docs/contrato-datos.md)
+python -m pipeline.correr tests/fixtures/raw/2026-11-10   # prueba con datos de ejemplo, sin red
 ```
 
 Para rutas reales hace falta un OSRM local con el PBF de México (ver `routing/osrm.py`).
+
+Un GitHub Action (`.github/workflows/pipeline-diario.yml`) corre todo a las 19:00 (centro de México)
+y publica `data/curated/` en la rama `datos`.
 
 ## Georreferencia y geocercas
 

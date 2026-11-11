@@ -235,19 +235,20 @@ def corredor_de_ruta(id: str, linea: list[Punto], ancho_km: float = 2.0, nombre:
     return Geocerca(id, nombre or id, "corredor", vertices=linea, ancho_km=ancho_km, etiquetas={"capa": "ruta"})
 
 
-def zonas_de_referencia(coropleta_fc: dict, minimo_tomas: int = 1, campo: str = "tomas_reportadas") -> list[Geocerca]:
+def zonas_de_referencia(coropleta_fc: dict, minimo_tomas: int = 1, campo: str = "tomas_reportadas",
+                        campo_clave: str = "CVEGEO") -> list[Geocerca]:
     """Geocercas informativas a partir de la coropleta agregada de pipeline.huachicol.
 
     Solo municipios con al menos minimo_tomas reportadas. La geocerca es el polígono
     municipal completo: la capa sigue siendo agregada (aviso tipo "zona con reportes"),
-    sin puntos ni detalle operativo.
+    sin puntos ni detalle operativo. Para la coropleta por estado usa campo_clave="CVE_ENT".
     """
     zonas = []
     for f in coropleta_fc["features"]:
         props = f.get("properties") or {}
         if int(props.get(campo, 0) or 0) < minimo_tomas:
             continue
-        g = desde_geojson(f, id_campo="CVEGEO", nombre_campo="NOMGEO")
+        g = desde_geojson(f, id_campo=campo_clave, nombre_campo="NOMGEO")
         g.etiquetas = {"capa": "referencia_huachicol", campo: props.get(campo),
                        "fuentes": props.get("fuentes", [])}
         zonas.append(g)
