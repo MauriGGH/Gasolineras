@@ -12,11 +12,12 @@ El frontend se adaptará del mapa de referencia (mismo diseño, cambio de tema).
 | Carpeta | Contenido |
 |---|---|
 | `pipeline/` | Ingesta (CNE, OSM, DENUE), limpieza, marcas, integración, GeoJSON, capa de huachicol agregada |
-| `routing/` | Dijkstra/A* genéricos, plan de recargas por autonomía, ruta de pipa (CVRP), cliente OSRM |
+| `routing/` | Dijkstra/A*, red vial propia, gasolinera más cercana, recargas óptimas (costo/paradas/tiempo), flota de pipas (OR-Tools), modo flotilla en tiempo real, API FastAPI + WebSocket |
 | `geo/` | Distancias, proyección sobre rutas, geocercas (círculo, polígono, corredor), georreferenciación |
 | `docs/` | Fuentes de datos, diseño del pipeline y del ruteo |
 | `data/manual/` | Datos capturados a mano con fuente (huachicol por estado/municipio, Profeco) |
 | `data/geo/` | Polígonos INEGI de estados y municipios (no se versionan, ver docs/contrato-datos.md) |
+| `data/ejemplo/` | Red vial simplificada y estaciones **sintéticas** para probar sin OSRM ni pipeline |
 
 ## Uso rápido
 
@@ -29,7 +30,15 @@ python -m pipeline.correr                        # todas las capas -> data/curat
 python -m pipeline.correr tests/fixtures/raw/2026-11-10   # prueba con datos de ejemplo, sin red
 ```
 
-Para rutas reales hace falta un OSRM local con el PBF de México (ver `routing/osrm.py`).
+API de ruteo (cercanas, recargas, pipas y flotilla en tiempo real):
+
+```bash
+python -m pip install -e ".[dev,api,vrp]"
+uvicorn routing.api:app --reload --port 8000   # /docs y /demo/flotilla
+```
+
+Sin OSRM usa una red vial propia de ejemplo (A*/Dijkstra) y estaciones sintéticas; para rutas
+reales hace falta un OSRM local con el PBF de México. Detalles en [docs/ruteo.md](docs/ruteo.md).
 
 Un GitHub Action (`.github/workflows/pipeline-diario.yml`) corre todo a las 19:00 (centro de México)
 y publica `data/curated/` en la rama `datos`.
