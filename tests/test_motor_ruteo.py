@@ -207,3 +207,12 @@ def test_flotilla_sugiere_recarga(motor, indice):
     ev = f.registrar("u1", CDMX, [MTY], combustible=Vehiculo(50, 10, 20, reserva_l=3))
     alerta = next(e for e in ev if e.get("alerta") == "combustible_bajo")
     assert alerta["siguiente_recarga"]["km_ruta"] <= 170
+
+
+def test_flotilla_alerta_de_combustible_una_sola_vez(motor, indice):
+    f = Flotilla(motor, indice)
+    ev = f.registrar("u1", CDMX, [MTY], combustible=Vehiculo(50, 10, 20, reserva_l=3))
+    assert sum(e.get("alerta") == "combustible_bajo" for e in ev) == 1
+    ev = [e for _ in range(5) for e in f.simular_paso(60, acelerar=10)]
+    assert not any(e.get("alerta") == "combustible_bajo" for e in ev)
+    assert f.unidades["u1"].siguiente_recarga is not None

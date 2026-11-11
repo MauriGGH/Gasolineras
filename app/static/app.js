@@ -845,7 +845,8 @@ function leyenda(){
 function aviso(){
   const a = $("aviso");
   const textos = { origen:"Clic en el mapa para fijar el ORIGEN · Esc cancela", destino:"Clic en el mapa para fijar el DESTINO · Esc cancela",
-    base:"Clic en el mapa para fijar la BASE de la pipa · Esc cancela", cerca:"Clic en el mapa para centrar la geocerca · Esc cancela" };
+    base:"Clic en el mapa para fijar la BASE de la pipa · Esc cancela",
+    "f-origen":"Clic en el mapa para fijar de dónde SALE la unidad · Esc cancela", "f-destino":"Clic en el mapa para fijar a dónde VA la unidad · Esc cancela", cerca:"Clic en el mapa para centrar la geocerca · Esc cancela" };
   if(ui.elige){ a.hidden = false; a.textContent = textos[ui.elige]; }
   else if(estado.eligeCmp){ a.hidden = false; a.textContent = "Elige la segunda entidad · Esc cancela"; }
   else if(patrulla.id){ a.hidden = false; a.textContent = `Patrulla · ${patrulla.i+1} de ${patrulla.ruta.length} · P detiene`; }
@@ -965,11 +966,11 @@ document.querySelectorAll("#cerca-orden button").forEach(b => b.onclick = () => 
 /* ---------- ruta: viaje con recargas óptimas o surtido con pipa ---------- */
 const rutaSt = { origen:null, destino:null, base:null, veh:VEHICULOS[0], objetivo:"costo", pedidos:[], res:null };
 const opcionesCap = CAPITALES.map((c,i) => `<option value="${i}">${c[0]}</option>`).join("");
-["r-origen","r-destino","s-base"].forEach(id => $(id).innerHTML = `<option value="">— elegir —</option><option value="mapa" hidden>Punto en el mapa</option>` + opcionesCap);
+["r-origen","r-destino","s-base","f-origen","f-destino"].forEach(id => $(id).innerHTML = `<option value="">— elegir —</option><option value="mapa" hidden>Punto en el mapa</option>` + opcionesCap);
 const cap = i => ({rot:CAPITALES[i][0], lat:CAPITALES[i][1], lon:CAPITALES[i][2]});
 function fijarPunto(tipo, p){
   rutaSt[tipo] = p;
-  const sel = $({origen:"r-origen", destino:"r-destino", base:"s-base"}[tipo]);
+  const sel = $({origen:"r-origen", destino:"r-destino", base:"s-base"}[tipo] ?? tipo);   // "f-origen"/"f-destino" son ya el id
   const op = sel.querySelector('option[value="mapa"]');
   const i = p ? CAPITALES.findIndex(c => c[0] === p.rot) : -1;
   if(!p) sel.value = "";
@@ -977,7 +978,7 @@ function fijarPunto(tipo, p){
   else { op.hidden = false; op.textContent = p.rot; sel.value = "mapa"; }
   pintarRuta();
 }
-[["r-origen","origen"],["r-destino","destino"],["s-base","base"]].forEach(([id,t]) => $(id).onchange = ev => {
+[["r-origen","origen"],["r-destino","destino"],["s-base","base"],["f-origen","f-origen"],["f-destino","f-destino"]].forEach(([id,t]) => $(id).onchange = ev => {
   const v = ev.target.value; if(v === "mapa") return; fijarPunto(t, v === "" ? null : cap(+v)); });
 document.querySelectorAll("[data-elige]").forEach(b => b.onclick = () => ponerEleccion(ui.elige === b.dataset.elige ? null : b.dataset.elige));
 $("r-vehiculos").innerHTML = VEHICULOS.map((v,i) => `<button type="button" data-v="${i}" aria-pressed="${i===0}">${Siluetas.plana(v.k)}${v.rot}</button>`).join("");
@@ -993,7 +994,8 @@ document.querySelectorAll("#r-objetivo button").forEach(b => b.onclick = () => {
 function ponerModo(m){
   ui.modo = m;
   document.querySelectorAll("#ruta-modo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.modo === m));
-  $("ruta-viaje").hidden = m !== "viaje"; $("ruta-surtido").hidden = m !== "surtido";
+  $("ruta-viaje").hidden = m !== "viaje"; $("ruta-surtido").hidden = m !== "surtido"; $("ruta-flotilla").hidden = m !== "flotilla";
+  if(m === "flotilla") conectarFlota();
   rutaSt.res = null; $("ruta-res").innerHTML = ""; $("ruta-msj").textContent = ""; pintarRuta(); pintarPedidos();
 }
 document.querySelectorAll("#ruta-modo button").forEach(b => b.onclick = () => ponerModo(b.dataset.modo));
@@ -1036,12 +1038,15 @@ function pintarRuta(){
     x.append("circle").attr("class","parada"); x.append("text").attr("class","parada-n"); return x; })
     .attr("transform", d => `translate(${proy(lonlat(d))})`);
   g.select("text").text(d => d.n);
+  pintarFlota();
   escalarMarcas();
 }
 function escalarMarcas(){
   gMarcas.selectAll("circle.extremo").attr("r", 6/k);
   gMarcas.selectAll("circle.parada").attr("r", 8/k);
   gMarcas.selectAll("text.parada-n").attr("font-size", 10/k);
+  gMarcas.selectAll("g.u-esc").attr("transform", `scale(${1/k})`);
+  gMarcas.selectAll("circle.recarga-sug").attr("r", 10/k);
   gGeo.selectAll("circle.yo").attr("r", 5/k); gGeo.selectAll("circle.yo-onda").attr("r", 14/k);
 }
 
@@ -1096,6 +1101,175 @@ $("s-calcular").onclick = async () => {
           <i class="pod-barra"><u style="transform:scaleX(${v.ocupacion ?? 0})"></u></i></div>`).join("")}`;
   } catch(err){ msj.textContent = "No se pudo planear: " + err.message; }
 };
+
+
+/* ---------- ruta: flotilla en vivo (varias unidades, WebSocket /api/ruteo/flotilla/ws) ----------
+   El servidor calcula y recalcula las rutas; aquí solo se dibuja lo que llega:
+   "estado" (foto completa), "ruta" (línea nueva), "posicion" (avance), "alerta" y "eliminado". */
+const TIPOS_FLOTA = [
+  {k:"pipa", rot:"Pipa", tanque:600, rend:2.4, prod:"diesel"},
+  {k:"tracto", rot:"Tracto", tanque:600, rend:2.6, prod:"diesel"},
+  {k:"comercial", rot:"Reparto", tanque:100, rend:7, prod:"diesel"},
+  {k:"pickup", rot:"Pick up", tanque:80, rend:9, prod:"regular"},
+  {k:"sedan", rot:"Auto", tanque:45, rend:14, prod:"regular"},
+];
+// `var`: pintarRuta() puede correr al arrancar, antes de que se evalúe esta línea
+var flota = { ws:null, conectada:false, reintento:0, timer:null, unidades:new Map(), alertas:[], tipo:TIPOS_FLOTA[0], simulando:false, sel:null };
+$("f-tipos").innerHTML = TIPOS_FLOTA.map((v,i) => `<button type="button" data-t="${i}" aria-pressed="${i===0}">${Siluetas.plana(v.k)}${v.rot}</button>`).join("");
+document.querySelectorAll("#f-tipos button").forEach(b => b.onclick = () => {
+  flota.tipo = TIPOS_FLOTA[+b.dataset.t];
+  document.querySelectorAll("#f-tipos button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+
+function conectarFlota(){
+  if(flota.ws || !MOTOR) { if(!MOTOR) estadoFlota("El motor de rutas no responde (/api/ruteo)", "no"); return; }
+  const ws = new WebSocket(location.origin.replace(/^http/, "ws") + "/api/ruteo/flotilla/ws");
+  flota.ws = ws; estadoFlota("Conectando…");
+  ws.onopen = () => { flota.conectada = true; flota.reintento = 0; estadoFlota("En vivo", "si"); };
+  ws.onmessage = m => recibirFlota(JSON.parse(m.data));
+  ws.onclose = () => {   // reconexión con espera creciente (1, 2, 4… hasta 30 s)
+    flota.ws = null; flota.conectada = false;
+    const espera = Math.min(30, 2 ** flota.reintento++);
+    estadoFlota(`Sin conexión · reintento en ${espera} s`, "no");
+    clearTimeout(flota.timer); flota.timer = setTimeout(conectarFlota, espera * 1000);
+  };
+}
+function estadoFlota(texto, clase = ""){ $("f-estado").textContent = texto; $("f-luz").className = "luz " + clase; }
+
+function guardarUnidad(v){
+  const ant = flota.unidades.get(v.id);
+  const u = {...ant, ...v};
+  if(!v.linea && ant?.linea) u.linea = ant.linea;
+  // Sentido de la silueta: mira hacia donde avanza (oeste → se voltea)
+  if(ant && (v.lon !== ant.lon)) u.dir = v.lon < ant.lon ? -1 : 1;
+  u.dir ??= 1;
+  flota.unidades.set(v.id, u);
+}
+let pintaPendiente = false;
+function repintarFlota(){   // varias posiciones llegan juntas: un solo repintado por cuadro
+  if(pintaPendiente) return; pintaPendiente = true;
+  requestAnimationFrame(() => { pintaPendiente = false; pintarFlota(); escalarMarcas(); listarFlota(); });
+}
+function recibirFlota(e){
+  if(e.tipo === "estado"){
+    flota.unidades.clear();
+    const lineas = {};
+    e.geojson.features.filter(f => f.properties.tipo === "ruta_vehiculo").forEach(f => lineas[f.properties.id] = f.geometry.coordinates);
+    e.geojson.features.filter(f => f.properties.tipo === "vehiculo").forEach(f => guardarUnidad({...f.properties, linea:lineas[f.properties.id]}));
+  } else if(e.tipo === "ruta" || e.tipo === "posicion") guardarUnidad(e.vehiculo);
+  else if(e.tipo === "eliminado"){ flota.unidades.delete(e.id); if(flota.sel === e.id) flota.sel = null; }
+  else if(e.tipo === "alerta" || e.tipo === "error"){
+    flota.alertas.unshift({...e, hora:new Date()}); flota.alertas.length = Math.min(flota.alertas.length, 30); listarAlertas();
+  }
+  repintarFlota();
+}
+
+function pintarFlota(){
+  if(!flota) return;
+  const lista = [...flota.unidades.values()];
+  gRuta.selectAll("path.flota-linea").data(lista.filter(u => u.linea && !u.llego), u => u.id).join("path")
+    .attr("class","flota-linea").style("--c", u => u.color).attr("d", u => ruta({type:"LineString", coordinates:u.linea}));
+  const sug = lista.filter(u => u.siguiente_recarga && !u.llego).map(u => ({...u.siguiente_recarga, id:u.id}));
+  gMarcas.selectAll("circle.recarga-sug").data(sug, d => d.id).join("circle").attr("class","recarga-sug")
+    .attr("cx", d => proy(lonlat(d))[0]).attr("cy", d => proy(lonlat(d))[1]);
+  const g = gMarcas.selectAll("g.unidad").data(lista, u => u.id).join(en => {
+    const x = en.append("g").attr("class","unidad").on("click", (ev, u) => { ev.stopPropagation(); enfocarUnidad(u.id); });
+    const s = x.append("g").attr("class","u-esc");
+    s.append("circle").attr("class","u-pulso").attr("r", 13);
+    s.append("circle").attr("class","u-aro").attr("r", 11);
+    s.append("g").attr("class","u-sil");
+    s.append("text").attr("y", -16).attr("text-anchor","middle").attr("font-size", 10);
+    x.append("title");
+    return x;
+  });
+  g.classed("llego", u => !!u.llego).style("--c", u => u.color)
+    .attr("transform", u => `translate(${proy([u.lon, u.lat])})`);
+  g.select("g.u-sil").each(function(u){   // la silueta se dibuja una vez por tipo
+    const sel = d3.select(this);
+    if(sel.attr("data-k") !== (u.tipo ?? "pipa")) sel.attr("data-k", u.tipo ?? "pipa").html(Siluetas.plana(u.tipo ?? "pipa"));
+    sel.attr("transform", `scale(${u.dir},1)`).select("svg").attr("x", -9).attr("y", -5).attr("width", 18).attr("height", 9);
+  });
+  g.select("text").text(u => u.nombre.length > 18 ? u.nombre.slice(0, 17) + "…" : u.nombre);
+  g.select("title").text(u => `${u.nombre} · ${u.llego ? "llegó" : `${fmt1(u.km_restante)} km, ${duracion(u.min_restante)}`}`);
+}
+const duracion = min => min >= 60 ? `${Math.floor(min/60)} h ${Math.round(min%60)} min` : `${Math.round(min)} min`;
+const horaLlegada = u => u.eta_epoch ? new Date(u.eta_epoch * 1000).toLocaleTimeString("es-MX", {hour:"2-digit", minute:"2-digit"}) : "—";
+
+function listarFlota(){
+  const lista = [...flota.unidades.values()];
+  $("f-unidades").innerHTML = lista.length ? lista.map(u => `<li style="--c:${esc(u.color)}">
+      <button type="button" class="fila-est${flota.sel === u.id ? " sel" : ""}" data-unidad="${esc(u.id)}">
+        ${Siluetas.plana(u.tipo ?? "pipa")}
+        <span>${esc(u.nombre)}<small>${u.llego ? `<b class="llego">Llegó</b>` : `${fmt1(u.km_restante)} km · ${duracion(u.min_restante)} · llega ${horaLlegada(u)}`}
+          ${u.velocidad_kmh ? ` · ${Math.round(u.velocidad_kmh)} km/h` : ""}${hay(u.litros) ? ` · ${fmt(Math.round(u.litros))} l` : ""}
+          ${u.siguiente_recarga ? `<br>⛽ cargar en ${esc(u.siguiente_recarga.nombre)}` : ""}</small>
+          <i class="avance"><u style="transform:scaleX(${Math.min(1, u.avance ?? 0)})"></u></i></span>
+        <span class="num">${Math.round(100 * Math.min(1, u.avance ?? 0))}%</span></button>
+      <button type="button" class="quitar" data-quitar-unidad="${esc(u.id)}" aria-label="Quitar ${esc(u.nombre)}">✕</button></li>`).join("")
+    : `<li class="nota" style="padding:8px 4px">Sin unidades. Agrega una o carga las de ejemplo.</li>`;
+}
+function listarAlertas(){
+  $("f-alertas").innerHTML = flota.alertas.length ? flota.alertas.map(a => `<li class="${esc(a.alerta ?? a.tipo)}">
+      <small>${a.hora.toLocaleTimeString("es-MX", {hour:"2-digit", minute:"2-digit", second:"2-digit"})}</small>${esc(a.mensaje)}</li>`).join("")
+    : `<li class="nota">Sin alertas.</li>`;
+}
+$("f-unidades").addEventListener("click", async ev => {
+  const q = ev.target.closest("[data-quitar-unidad]");
+  if(q){ try { await pedir(`/api/ruteo/flotilla/vehiculos/${encodeURIComponent(q.dataset.quitarUnidad)}`, {method:"DELETE"}); }
+         catch(err){ $("ruta-msj").textContent = "No se pudo quitar: " + err.message; } return; }
+  const b = ev.target.closest("[data-unidad]"); if(b) enfocarUnidad(b.dataset.unidad);
+});
+function enfocarUnidad(id){
+  const u = flota.unidades.get(id); if(!u) return;
+  flota.sel = id; listarFlota();
+  volarA(u.linea?.length ? u.linea : [[u.lon, u.lat]], 30, 0.3);
+}
+
+async function altaUnidades(vehiculos){
+  if(!MOTOR){ $("ruta-msj").textContent = "El motor de rutas no responde (/api/ruteo)."; return; }
+  conectarFlota();
+  $("ruta-msj").textContent = vehiculos.length > 1 ? `Calculando ${vehiculos.length} rutas…` : "Calculando la ruta…";
+  try {
+    const r = await enviar("/api/ruteo/flotilla/vehiculos", {vehiculos});
+    if(!flota.conectada) r.eventos.forEach(recibirFlota);   // si el WebSocket está abierto, los mismos eventos ya llegan por ahí
+    $("ruta-msj").textContent = `${vehiculos.length} ${vehiculos.length > 1 ? "unidades agregadas" : "unidad agregada"}.`
+      + (MOTOR.motor !== "osrm" ? " Sin OSRM las rutas usan la red vial de ejemplo." : "");
+    const pts = [...flota.unidades.values()].flatMap(u => u.linea ?? [[u.lon, u.lat]]);
+    if(pts.length) volarA(pts, 30);
+  } catch(err){ $("ruta-msj").textContent = "No se pudo agregar: " + err.message; }
+}
+const unidadDe = (id, nombre, t, o, d, litros) => ({ id, nombre, posicion:[o.lat, o.lon], destinos:[[d.lat, d.lon]], datos:{tipo:t.k},
+  ...(hay(litros) ? {combustible:{tanque_l:t.tanque, rendimiento_km_l:t.rend, combustible_inicial_l:Math.min(litros, t.tanque),
+                                   reserva_l:Math.max(2, Math.round(t.tanque*.08)), producto:t.prod}} : {}) });
+$("f-agregar").onclick = () => {
+  const o = rutaSt["f-origen"], d = rutaSt["f-destino"];
+  if(!o || !d){ $("ruta-msj").textContent = "Falta " + (!o ? "de dónde sale" : "a dónde va") + " la unidad."; return; }
+  const n = flota.unidades.size + 1, litrosTxt = $("f-litros").value;
+  const nombre = $("f-nombre").value.trim() || `${flota.tipo.rot} ${n}`;
+  altaUnidades([unidadDe(`u${Date.now().toString(36)}`, nombre, flota.tipo, o, d, litrosTxt === "" ? null : +litrosTxt)]);
+  $("f-nombre").value = "";
+};
+$("f-ejemplo").onclick = () => {
+  const c = nombre => cap(CAPITALES.findIndex(x => x[0].startsWith(nombre)));
+  const TF = Object.fromEntries(TIPOS_FLOTA.map(t => [t.k, t]));
+  altaUnidades([
+    unidadDe("ej-1", "Pipa 01 · CDMX → Monterrey", TF.pipa, c("CDMX"), c("Monterrey"), 260),
+    unidadDe("ej-2", "Tracto 02 · CDMX → Guadalajara", TF.tracto, c("CDMX"), c("Guadalajara"), null),
+    unidadDe("ej-3", "Pick up 03 · Querétaro → Zacatecas", TF.pickup, c("Querétaro"), c("Zacatecas"), null),
+    unidadDe("ej-4", "Pipa 04 · Monterrey → N. Laredo", TF.pipa, c("Monterrey"), c("Nuevo Laredo"), null),
+    unidadDe("ej-5", "Auto 05 · Puebla → Veracruz", TF.sedan, c("Puebla"), c("Veracruz"), 30),
+    unidadDe("ej-6", "Reparto 06 · Toluca → Morelia", TF.comercial, c("Toluca"), c("Morelia"), null),
+  ]);
+};
+async function simularFlota(activa){
+  try {
+    await enviar("/api/ruteo/flotilla/simulacion", {activa, cada_seg:1, acelerar:+$("f-vel").value});
+    flota.simulando = activa;
+    $("f-simular").setAttribute("aria-pressed", activa); $("f-simular").textContent = activa ? "⏸ Pausar" : "▶ Simular";
+  } catch(err){ $("ruta-msj").textContent = "No se pudo cambiar la simulación: " + err.message; }
+}
+$("f-simular").onclick = () => simularFlota(!flota.simulando);
+$("f-vel").onchange = () => { if(flota.simulando) simularFlota(true); };
+listarFlota();
 
 /* ================= 8. PANEL ÚNICO Y LÍNEA DE TIEMPO ================= */
 const TITULOS = { indicador:"Indicador y vista", ranking:"Ranking de entidades", marcas:"Marcas", capas:"Capas", buscar:"Buscador",
