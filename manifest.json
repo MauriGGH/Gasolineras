@@ -1,0 +1,36 @@
+{
+  "version_contrato": "1",
+  "fecha_datos": "2026-11-11",
+  "generado": "2026-11-11T23:08:39+00:00",
+  "pasos_omitidos": [
+    "denue (sin denue.csv)",
+    "municipios por polígono (sin data/geo/municipios.geojson)",
+    "coropletas por estado (sin data/geo/estados.geojson)"
+  ],
+  "archivos": [
+    "estaciones.geojson",
+    "estaciones.min.json",
+    "precios_historico.csv",
+    "precios_agregados.json",
+    "evitar_permisos.json",
+    "huachicol_estados.json",
+    "calidad_2026-11-11.json"
+  ],
+  "calidad": {
+    "cne_total": 15044,
+    "coordenadas_invalidas": 85,
+    "sin_precio": 1116,
+    "precio_dudoso": 11,
+    "match_osm": 8239,
+    "match_denue": 0,
+    "permiso_duplicado": 0,
+    "municipio_por_denue": 0,
+    "municipio_por_poligono": 0,
+    "sin_municipio": 14959,
+    "profeco_filas": 0,
+    "profeco_sin_estacion": 0,
+    "profeco_estaciones": 0,
+    "profeco_evitar": 0,
+    "estaciones_publicadas": 14959
+  }
+}

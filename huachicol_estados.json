@@ -1,0 +1,104 @@
+{
+  "petroliferos": {
+    "anio": 2024,
+    "periodo": "anual",
+    "estados": {
+      "13": {
+        "estado": "Hidalgo",
+        "tomas_reportadas": 2450,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "14": {
+        "estado": "Jalisco",
+        "tomas_reportadas": 1895,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "28": {
+        "estado": "Tamaulipas",
+        "tomas_reportadas": 1117,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "11": {
+        "estado": "Guanajuato",
+        "tomas_reportadas": 850,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "19": {
+        "estado": "Nuevo León",
+        "tomas_reportadas": 773,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "22": {
+        "estado": "Querétaro",
+        "tomas_reportadas": 724,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "15": {
+        "estado": "Estado de México",
+        "tomas_reportadas": 547,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "05": {
+        "estado": "Coahuila",
+        "tomas_reportadas": 544,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "21": {
+        "estado": "Puebla",
+        "tomas_reportadas": 517,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      }
+    }
+  },
+  "gas_lp": {
+    "anio": 2024,
+    "periodo": "anual",
+    "estados": {
+      "21": {
+        "estado": "Puebla",
+        "tomas_reportadas": 426,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "30": {
+        "estado": "Veracruz",
+        "tomas_reportadas": 245,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "29": {
+        "estado": "Tlaxcala",
+        "tomas_reportadas": 127,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "15": {
+        "estado": "Estado de México",
+        "tomas_reportadas": 94,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "20": {
+        "estado": "Oaxaca",
+        "tomas_reportadas": 25,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "22": {
+        "estado": "Querétaro",
+        "tomas_reportadas": 16,
+        "fuente": "Infobae con datos IGAVIM/Pemex",
+        "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      }
+    }
+  }
+}
