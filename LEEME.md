@@ -25,8 +25,12 @@ Abrir http://127.0.0.1:8000 · API: http://127.0.0.1:8000/docs
 ## Datos
 - Reales: corre el pipeline (`python -m pipeline.correr`, ver README.md y
   `docs/contrato-datos.md`). Deja `data/curated/estaciones.geojson` y el histórico de precios.
-- Sin datos reales, `construir_datos.py` usa las estaciones SINTÉTICAS de
-  `data/ejemplo/` y la interfaz muestra un aviso **DEMO** permanente.
+- Si no hay `data/curated/` local, `construir_datos.py` trae la última corrida del cron
+  (rama `datos` del repo, con `git fetch`, así que funciona aunque el repo sea privado).
+  `--actualizar` la vuelve a traer; `--sin-red` no lo intenta.
+- Solo si tampoco hay rama `datos`, usa las estaciones SINTÉTICAS de `data/ejemplo/` y la
+  interfaz muestra un aviso **DEMO** permanente.
+- Línea de tiempo: un corte por día hasta 45 días de histórico; después, uno por semana.
 - Tomas clandestinas: `data/manual/huachicol_estados.csv` y `huachicol_municipios.csv`,
   solo conteos con fuente y periodo. Nunca puntos de tomas ni ductos.
 
