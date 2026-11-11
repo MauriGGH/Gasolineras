@@ -1,0 +1,14 @@
+# Uso:  docker compose up --build      y abrir http://localhost:8000
+# Para otro puerto en el equipo:  PUERTO=8080 docker compose up --build
+services:
+  web:
+    build: .
+    image: ojo-de-dios-robo-vehicular
+    ports:
+      - "${PUERTO:-8000}:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if b'\"ok\"' in urllib.request.urlopen('http://127.0.0.1:8000/api/salud').read() else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

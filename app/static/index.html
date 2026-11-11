@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ojo de Dios Gasolineras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- ?v= obliga al navegador a pedir la versión nueva cuando cambian estos archivos; súbelo al modificarlos -->
+<link rel="stylesheet" href="/static/estilos.css?v=3">
+</head>
+<body>
+<!-- Secuencia de arranque: cada línea reporta una comprobación real -->
+<div class="arranque" id="arranque" role="status" aria-label="Cargando datos">
+  <div class="arr-caja">
+    <svg class="arr-iris" viewBox="0 0 120 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="56" class="a1"/><circle cx="60" cy="60" r="42" class="a2"/>
+      <circle cx="60" cy="60" r="27" class="a3"/><circle cx="60" cy="60" r="8" class="a4"/>
+      <path d="M60 0v18M60 102v18M0 60h18M102 60h18" class="a5"/>
+    </svg>
+    <h1>OJO DE DIOS <span>/ GASOLINERAS MX</span></h1>
+    <pre id="arr-log"></pre>
+    <p class="nota" id="arr-nota">Clic para omitir</p>
+  </div>
+</div>
+
+<div class="app" id="app">
+
+  <!-- ===== EL MAPA: ocupa toda la ventana ===== -->
+  <main class="mapa" id="mapa">
+    <svg id="svg" role="img" aria-label="Mapa de México por entidad federativa con gasolineras, coloreado según el indicador elegido"></svg>
+    <div class="barrido" id="barrido"></div>
+    <div class="trama"></div>
+    <div class="aviso" id="aviso" hidden></div>
+    <div class="demo" id="demo" role="note" hidden></div>
+    <div class="tip" id="tip"></div>
+  </main>
+
+  <!-- ===== Lo único que queda encima en reposo: nombre, una cifra y la barra ===== -->
+  <header class="marca">
+    <div class="marca-nombre">
+      <svg class="iris" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="15.5" class="i1"/><circle cx="17" cy="17" r="9" class="i2"/>
+        <circle cx="17" cy="17" r="3.2" class="i3"/><path d="M17 0v6M17 28v6M0 17h6M28 17h6" class="i1"/>
+      </svg>
+      <h1>OJO DE DIOS <span>/ GASOLINERAS MX</span></h1>
+    </div>
+    <!-- La cifra nacional es un botón: abre el panorama nacional -->
+    <button type="button" class="cifra-nac" id="cifra-nac" aria-controls="panel" aria-expanded="false" data-etq="Panorama nacional">
+      <span class="eti" id="cifra-eti">Regular · promedio nacional</span>
+      <b class="num" id="cifra-val">—</b>
+    </button>
+  </header>
+
+  <!-- Leyenda compacta y lectura del cursor -->
+  <div class="pie-mapa">
+    <div class="leyenda">
+      <div class="eti" id="ley-tit"></div>
+      <div class="rampa" id="ley-rampa"></div>
+      <div class="esc num"><span id="ley-min"></span><span id="ley-max"></span></div>
+      <div class="nota" id="ley-focos"></div>
+      <button type="button" class="chip-marca" id="chip-marca" hidden></button>
+    </div>
+    <div class="hud" id="hud"><span id="hud-pos">CURSOR <b>fuera del área</b></span><span id="hud-zoom">ZOOM <b>×1.0</b></span></div>
+  </div>
+
+  <!-- Cinta de datos: apagada al inicio, se enciende desde Capas -->
+  <div class="cinta" id="cinta-caja" aria-hidden="true" hidden><div class="cinta-txt" id="cinta"></div></div>
+
+  <!-- ===== Línea de tiempo: franja inferior desplegable ===== -->
+  <section class="franja" id="franja" aria-label="Línea de tiempo" inert>
+    <button type="button" class="btn-ico" id="play" aria-label="Reproducir la serie de precios">▶</button>
+    <output id="anio-val" for="anio" class="num"></output>
+    <div class="carril">
+      <div class="anio-barras" id="anio-barras" aria-hidden="true"></div>
+      <input type="range" id="anio" step="1" aria-label="Fecha de corte">
+      <div class="anio-marcas" id="anio-marcas" aria-hidden="true"></div>
+    </div>
+    <p class="nota" id="nota-anio"></p>
+    <button type="button" class="cerrar" id="franja-cerrar" aria-label="Cerrar la línea de tiempo">✕</button>
+  </section>
+
+  <!-- ===== Panel único: aquí aparece la herramienta elegida o el expediente ===== -->
+  <aside class="panel" id="panel" aria-labelledby="panel-tit" tabindex="-1" inert>
+    <header class="panel-cab">
+      <h2 id="panel-tit">Panel</h2>
+      <button type="button" class="cerrar" id="panel-cerrar" aria-label="Cerrar el panel">✕</button>
+    </header>
+    <div class="panel-cuerpo">
+
+      <section data-vista="indicador" hidden>
+        <div>
+          <div class="eti" id="eti-metrica">Indicador <kbd>1</kbd>–<kbd>5</kbd></div>
+          <div class="seg tres" role="group" aria-labelledby="eti-metrica" id="seg-metrica">
+            <button type="button" data-m="regular" aria-pressed="true">Regular</button>
+            <button type="button" data-m="premium" aria-pressed="false">Premium</button>
+            <button type="button" data-m="diesel" aria-pressed="false">Diésel</button>
+          </div>
+          <div class="seg dos" role="group" aria-label="Otros indicadores" id="seg-metrica-b" style="margin-top:6px">
+            <button type="button" data-m="estaciones" aria-pressed="false">Estaciones</button>
+            <button type="button" data-m="tomas" aria-pressed="false">Tomas (ref.)</button>
+          </div>
+        </div>
+        <div>
+          <div class="eti" id="eti-vista">Vista <kbd>V</kbd></div>
+          <div class="seg dos" role="group" aria-labelledby="eti-vista" id="seg-vista">
+            <button type="button" id="v-coro" data-v="coro" aria-pressed="true">Coroplético</button>
+            <button type="button" id="v-burb" data-v="burb" aria-pressed="false">Burbujas</button>
+          </div>
+        </div>
+        <p class="nota" id="nota-metrica"></p>
+      </section>
+
+      <section data-vista="ranking" hidden>
+        <p class="nota" id="rank-nota">Clic fija la entidad · Mayús + clic la compara con la fijada.</p>
+        <ol class="rank" id="rank"></ol>
+      </section>
+
+      <section data-vista="marcas" hidden>
+        <p class="nota" id="marca-msj" aria-live="polite"></p>
+        <div class="modelos" id="modelos"></div>
+      </section>
+
+      <section data-vista="capas" hidden>
+        <p class="nota">Lo que se dibuja sobre el mapa.</p>
+        <div class="chips" id="capas">
+          <button type="button" data-c="estaciones" aria-pressed="true">Gasolineras</button>
+          <button type="button" data-c="focos" aria-pressed="true">Focos de tomas clandestinas (referencia)</button>
+          <button type="button" data-c="etiq" aria-pressed="false">Etiquetas</button>
+          <button type="button" data-c="ret" aria-pressed="true">Retícula geográfica</button>
+          <button type="button" data-c="barrido" aria-pressed="true">Barrido</button>
+          <button type="button" data-c="cinta" aria-pressed="false">Cinta de datos</button>
+        </div>
+      </section>
+
+      <section data-vista="buscar" hidden>
+        <div class="buscar">
+          <label class="eti" for="buscar">Entidad, estación, marca o municipio</label>
+          <input id="buscar" type="search" placeholder="Ej. Jalisco, Pemex, Tula" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="nota" id="buscar-msj" aria-live="polite"></p>
+        <ul class="resultados" id="buscar-res"></ul>
+      </section>
+
+      <section data-vista="patrulla" hidden>
+        <p class="nota" id="patrulla-txt"></p>
+        <button type="button" class="btn-ancho" id="patrulla" aria-pressed="false"><span id="patrulla-rot">▶ Iniciar patrulla</span> <kbd>P</kbd></button>
+        <ol class="ruta" id="patrulla-ruta"></ol>
+      </section>
+
+      <section data-vista="cerca" hidden>
+        <p class="nota" id="cerca-txt">Usa tu ubicación o haz clic en el mapa. La geocerca marca el radio de búsqueda.</p>
+        <div class="seg dos">
+          <button type="button" id="cerca-gps">◎ Mi ubicación</button>
+          <button type="button" id="cerca-mapa" aria-pressed="false">✛ Elegir en el mapa</button>
+        </div>
+        <div>
+          <label class="eti" for="cerca-radio">Geocerca · radio <b class="num" id="cerca-radio-val">5 km</b></label>
+          <input type="range" id="cerca-radio" min="1" max="30" step="1" value="5" class="rango">
+        </div>
+        <div>
+          <div class="eti">Ordenar por</div>
+          <div class="seg tres" id="cerca-orden">
+            <button type="button" data-o="minutos" aria-pressed="true">Tiempo</button>
+            <button type="button" data-o="km" aria-pressed="false">Distancia</button>
+            <button type="button" data-o="precio" aria-pressed="false">Precio</button>
+          </div>
+        </div>
+        <p class="nota" id="cerca-msj" aria-live="polite"></p>
+        <ol class="lista-est" id="cerca-lista"></ol>
+      </section>
+
+      <section data-vista="ruta" hidden>
+        <div class="seg dos" id="ruta-modo">
+          <button type="button" data-modo="viaje" aria-pressed="true">Viaje y recargas</button>
+          <button type="button" data-modo="surtido" aria-pressed="false">Surtido con pipa</button>
+        </div>
+        <div id="ruta-viaje" class="bloque">
+          <div class="puntos">
+            <label class="eti" for="r-origen">Origen</label>
+            <div class="punto"><select id="r-origen"></select><button type="button" class="mini" data-elige="origen">✛ mapa</button></div>
+            <label class="eti" for="r-destino">Destino</label>
+            <div class="punto"><select id="r-destino"></select><button type="button" class="mini" data-elige="destino">✛ mapa</button></div>
+          </div>
+          <div>
+            <div class="eti">Vehículo</div>
+            <div class="vehiculos" id="r-vehiculos"></div>
+          </div>
+          <div class="campos">
+            <label>Tanque <span><input type="number" id="r-tanque" min="5" max="1500" step="1"> l</span></label>
+            <label>Rendimiento <span><input type="number" id="r-rend" min="1" max="60" step="0.5"> km/l</span></label>
+            <label>Trae <span><input type="number" id="r-inicial" min="0" max="1500" step="1"> l</span></label>
+            <label>Corredor <span><input type="number" id="r-corredor" min="0.5" max="20" step="0.5" value="3"> km</span></label>
+          </div>
+          <div>
+            <div class="eti">Optimizar</div>
+            <div class="seg tres" id="r-objetivo">
+              <button type="button" data-o="costo" aria-pressed="true">Menor gasto</button>
+              <button type="button" data-o="paradas" aria-pressed="false">Menos paradas</button>
+              <button type="button" data-o="tiempo" aria-pressed="false">Menor tiempo</button>
+            </div>
+          </div>
+          <button type="button" class="btn-ancho" id="r-calcular">▶ Calcular ruta y paradas</button>
+        </div>
+        <div id="ruta-surtido" class="bloque" hidden>
+          <div class="puntos">
+            <label class="eti" for="s-base">Base de la pipa (terminal)</label>
+            <div class="punto"><select id="s-base"></select><button type="button" class="mini" data-elige="base">✛ mapa</button></div>
+          </div>
+          <div class="campos">
+            <label>Pipas <span><input type="number" id="s-pipas" min="1" max="10" step="1" value="1"></span></label>
+            <label>Capacidad <span><input type="number" id="s-cap" min="1000" max="62000" step="1000" value="20000"> l</span></label>
+            <label>Por estación <span><input type="number" id="s-litros" min="500" max="62000" step="500" value="10000"> l</span></label>
+          </div>
+          <p class="nota">Clic en las gasolineras del mapa (o «Agregar al surtido» en su ficha) para armar los pedidos.</p>
+          <ol class="lista-est" id="s-pedidos"></ol>
+          <button type="button" class="btn-ancho" id="s-calcular">▶ Planear surtido</button>
+        </div>
+        <p class="nota" id="ruta-msj" aria-live="polite"></p>
+        <div id="ruta-res"></div>
+      </section>
+
+      <section data-vista="estacion" id="est" aria-live="polite" hidden></section>
+
+      <section data-vista="fuentes" hidden>
+        <div class="texto" id="fuentes-demo" hidden>
+          <div class="eti">Datos de demostración</div>
+          <p>Las gasolineras que ves son SINTÉTICAS (data/ejemplo). Corre <code>python -m pipeline.correr</code> y luego <code>python scripts/construir_datos.py</code> para cargar las reales.</p>
+        </div>
+        <div class="texto">
+          <div class="eti">Fuentes</div>
+          <p>Precios y estaciones: Comisión Nacional de Energía (antes CRE), publicación diaria por permiso.</p>
+          <p>Ubicación y marca: CNE, OpenStreetMap (ODbL) y DENUE del INEGI. Calidad: Profeco, «Quién es Quién en los combustibles».</p>
+          <p>Tomas clandestinas: Pemex vía prensa (Infobae, El CEO, Grupo Animal con datos IGAVIM). Solo conteos agregados por estado o municipio, con su periodo.</p>
+          <p>Rutas: OSRM sobre OpenStreetMap; sin servidor OSRM se usa una red vial de ejemplo.</p>
+        </div>
+        <div class="texto">
+          <div class="eti">Alcance y metodología</div>
+          <p>Precio de la entidad = promedio simple de sus estaciones con ese producto. Precios fuera de 12–40 MXN/l se descartan.</p>
+          <p>La capa de huachicol es solo referencia: periodos distintos (anual, semestre, trimestre) no se suman. No hay puntos de tomas, ductos ni datos operativos; los focos se dibujan en la cabecera municipal.</p>
+          <p>Recargas: Dijkstra sobre (estación, litros en el tanque); la ruta entre puntos con A*/Contraction Hierarchies del motor.</p>
+          <p>Límites estatales generalizados; no son cartografía oficial.</p>
+        </div>
+        <div class="texto">
+          <div class="eti">Proyección</div>
+          <p>Cónica Conforme de Lambert · paralelos 17.5° y 29.5° N · meridiano 102° O.</p>
+        </div>
+        <div class="texto">
+          <div class="eti">Estado de los datos</div>
+          <p><span class="vivo"></span><span id="estatus">Conectando con la API local</span></p>
+        </div>
+        <div class="texto">
+          <div class="eti">Cómo usarlo</div>
+          <p>Clic en una entidad para fijarla; clic en una gasolinera para ver su ficha. Mayús + clic en otra entidad para compararlas.</p>
+          <dl class="atajos">
+            <dt><kbd>Esc</kbd></dt><dd>cierra el panel, suelta el objetivo, cierra la línea de tiempo</dd>
+            <dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>regular, premium, diésel, estaciones, tomas</dd>
+            <dt><kbd>V</kbd></dt><dd>coroplético o burbujas</dd>
+            <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>corte anterior o siguiente</dd>
+            <dt><kbd>espacio</kbd></dt><dd>reproducir la serie de precios</dd>
+            <dt><kbd>G</kbd></dt><dd>gasolineras cerca de mí</dd>
+            <dt><kbd>R</kbd></dt><dd>ruta y recargas</dd>
+            <dt><kbd>C</kbd></dt><dd>comparar con otra entidad</dd>
+            <dt><kbd>P</kbd></dt><dd>patrulla automática</dd>
+            <dt><kbd>F</kbd></dt><dd>pantalla completa</dd>
+          </dl>
+        </div>
+      </section>
+
+      <section data-vista="nacional" id="nac" hidden></section>
+      <section data-vista="expediente" id="exp" aria-live="polite" hidden></section>
+    </div>
+  </aside>
+
+  <!-- ===== Barra de herramientas: un botón por función ===== -->
+  <nav class="barra" id="barra" role="toolbar" aria-label="Herramientas" aria-orientation="vertical">
+    <div class="htas">
+      <button type="button" class="hta" id="h-indicador" data-panel="indicador" data-etq="Indicador y vista" aria-label="Indicador y vista" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path class="lleno" d="M10 3a7 7 0 0 1 0 14z"/></svg></button>
+      <button type="button" class="hta" id="h-tiempo" data-etq="Línea de tiempo" aria-label="Línea de tiempo" aria-controls="franja" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg></button>
+      <button type="button" class="hta" id="h-ranking" data-panel="ranking" data-etq="Ranking de entidades" aria-label="Ranking de entidades" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h8M4 15h5"/></svg></button>
+      <button type="button" class="hta" id="h-marcas" data-panel="marcas" data-etq="Marcas" aria-label="Marcas" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 17V4.5Q4 3 5.5 3h5Q12 3 12 4.5V17M2.5 17h11M5.8 5.5h4.4v3H5.8zM12 7h1.6q1.4 0 1.4 1.4v5.2a1.2 1.2 0 0 0 2.4 0V7.5L15.5 5"/></svg></button>
+      <button type="button" class="hta" id="h-cerca" data-panel="cerca" data-etq="Cerca de mí" aria-label="Gasolineras cerca de mí" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><circle class="lleno" cx="10" cy="10" r="2"/><path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3"/></svg></button>
+      <button type="button" class="hta" id="h-ruta" data-panel="ruta" data-etq="Ruta y recargas" aria-label="Ruta y recargas" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="15.5" r="2"/><circle cx="15.5" cy="4.5" r="2"/><path d="M6.5 15.5h5a2.5 2.5 0 0 0 0-5h-3a2.5 2.5 0 0 1 0-5h5"/></svg></button>
+      <button type="button" class="hta" id="h-capas" data-panel="capas" data-etq="Capas" aria-label="Capas" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.6l7 3.6-7 3.6-7-3.6zM3 10l7 3.6 7-3.6M3 13.8l7 3.6 7-3.6"/></svg></button>
+      <button type="button" class="hta" id="h-buscar" data-panel="buscar" data-etq="Buscador" aria-label="Buscador" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2"/><path d="M13 13l4.2 4.2"/></svg></button>
+      <button type="button" class="hta" id="h-patrulla" data-panel="patrulla" data-etq="Patrulla automática" aria-label="Patrulla automática" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.2 10a6.2 6.2 0 1 1-2-4.6"/><path d="M14.6 2v3.8h-3.8"/><circle class="lleno" cx="10" cy="10" r="1.4"/></svg></button>
+      <button type="button" class="hta" id="h-fuentes" data-panel="fuentes" data-etq="Fuentes y metodología" aria-label="Fuentes y metodología" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 9.2v4.8M10 6v.8"/></svg></button>
+    </div>
+    <div class="zoom" role="group" aria-label="Cámara">
+      <button type="button" id="z-mas" aria-label="Acercar" data-etq="Acercar">+</button>
+      <button type="button" id="z-menos" aria-label="Alejar" data-etq="Alejar">−</button>
+      <button type="button" id="z-rst" aria-label="Ver todo el país" data-etq="Ver todo el país">⌂</button>
+      <button type="button" id="z-full" aria-label="Pantalla completa" data-etq="Pantalla completa">⛶</button>
+    </div>
+  </nav>
+</div>
+
+<script src="/static/vendor/d3.min.js"></script>
+<script src="/static/siluetas.js?v=3"></script>
+<script src="/static/app.js?v=3"></script>
+</body>
+</html>
