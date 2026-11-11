@@ -51,6 +51,7 @@ class Unidad:
     llegó: bool = False
     recalculos: int = 0
     siguiente_recarga: dict | None = None
+    avisado_combustible: bool = False  # la alerta sale una vez por episodio; luego solo se actualiza la sugerencia
     datos: dict = field(default_factory=dict)
 
     @property
@@ -180,7 +181,7 @@ class Flotilla:
         u.distancia_km, u.duracion_min = r["distancia_km"], r["duracion_min"]
         u.km_recorrido, u.segmento, u.desvio_km = 0.0, 0, 0.0
         u.recalculos += 1
-        u.siguiente_recarga = None
+        u.siguiente_recarga, u.avisado_combustible = None, False
         eventos = [{"tipo": "ruta", "vehiculo": u.resumen(con_linea=True)}]
         return eventos + self._revisar_combustible(u)
 
@@ -191,8 +192,7 @@ class Flotilla:
             return []
         alcance = (c.combustible_inicial_l - c.reserva_l) * c.rendimiento_km_l
         if alcance >= u.km_restante:
-            if u.siguiente_recarga:
-                u.siguiente_recarga = None
+            u.siguiente_recarga, u.avisado_combustible = None, False
             return []
         if u.siguiente_recarga and u.siguiente_recarga.get("km_ruta", -1) > u.km_recorrido:
             return []  # ya hay sugerencia vigente
@@ -201,7 +201,8 @@ class Flotilla:
         lons = [p[1] for p in restante]
         m = self.corredor_recarga_km / 111 + 0.01
         candidatas = self.indice.en_caja(min(lats) - m, min(lons) - m, max(lats) + m, max(lons) + m)
-        plan = planear_recargas(restante, candidatas, c, corredor_km=self.corredor_recarga_km, objetivo="costo")
+        # "paradas": en camino importa la siguiente parada necesaria, no la más barata aunque esté a la vuelta
+        plan = planear_recargas(restante, candidatas, c, corredor_km=self.corredor_recarga_km, objetivo="paradas")
         if plan and plan.paradas:
             p = plan.paradas[0]
             u.siguiente_recarga = {"permiso": p.permiso, "nombre": p.nombre, "marca": p.marca, "lat": p.lat,
@@ -218,6 +219,9 @@ class Flotilla:
                 u.siguiente_recarga = {k: e.get(k) for k in ("permiso", "nombre", "marca", "lat", "lon", "precio")}
                 u.siguiente_recarga["km_ruta"] = round(u.km_recorrido + e["km_ruta"], 1)
             msg = f"{u.nombre}: combustible insuficiente y sin plan completo de recarga sobre la ruta"
+        if u.avisado_combustible:
+            return []
+        u.avisado_combustible = True
         return [{"tipo": "alerta", "id": u.id, "alerta": "combustible_bajo", "mensaje": msg,
                  "siguiente_recarga": u.siguiente_recarga}]
 
