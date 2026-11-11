@@ -137,7 +137,34 @@ def test_huachicol_formato_viejo(tmp_path):
     ruta = tmp_path / "h.csv"
     ruta.write_text("cve_mun,municipio,estado,anio,tomas_reportadas,fuente,url\n13076,Tula,Hidalgo,2024,5,x,u\n"
                     "13076,Tula,Hidalgo,2024,2,y,v\n")
-    assert huachicol.leer_conteos(ruta, 2024)["13076"]["tomas_reportadas"] == 7
+    c = huachicol.leer_conteos(ruta, 2024)["13076"]
+    # dos fuentes del mismo municipio y periodo no se suman: vale la primera, la otra queda como alternativa
+    assert c["tomas_reportadas"] == 5 and c["alternativas"][0]["tomas_reportadas"] == 2
+
+
+def test_huachicol_anio_con_mas_cobertura():
+    filas = [{"anio": "2024", "cve_ent": "13"}, {"anio": "2024", "cve_ent": "14"}, {"anio": "2025", "cve_ent": "13"}]
+    assert huachicol.anio_con_mas_cobertura(filas) == 2024
+    assert huachicol.anio_con_mas_cobertura(filas + [{"anio": "2025", "cve_ent": "14"}]) == 2025
+    assert huachicol.anio_con_mas_cobertura([]) is None
+
+
+def test_datos_manuales_huachicol_consistentes():
+    """Los CSV reales: columnas completas, periodos y productos conocidos, sin filas repetidas."""
+    import csv
+    raiz = pathlib.Path(__file__).resolve().parents[1]
+    for nombre, clave, largo in (("huachicol_estados.csv", "cve_ent", 2), ("huachicol_municipios.csv", "cve_mun", 5)):
+        with (raiz / "data" / "manual" / nombre).open(encoding="utf-8", newline="") as f:
+            filas = list(csv.DictReader(f))
+        vistos = set()
+        for r in filas:
+            assert len(r[clave].zfill(largo)) == largo and r[clave].isdigit(), r
+            assert r["periodo"] in {"anual", "ene-sep", "1S", "1T"}, r
+            assert r["producto"] in {"petroliferos", "gas_lp", "total_no_desglosado"}, r
+            assert int(r["tomas_reportadas"]) >= 0 and r["url"].startswith("https://"), r
+            k = (r[clave], r["anio"], r["periodo"], r["producto"], r["fuente"])
+            assert k not in vistos, f"fila repetida {k}"
+            vistos.add(k)
 
 
 def test_huachicol_claves_sin_poligono():

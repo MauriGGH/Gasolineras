@@ -9,7 +9,8 @@ construir_datos.py
 
 De dónde salen las estaciones, en este orden:
   1. data/curated/ local (después de `python -m pipeline.correr`).
-  2. La rama `datos` del repositorio, que el cron diario actualiza (se baja a data/curated/).
+  2. La rama `datos` del repositorio, que el cron diario actualiza (se baja a data/curated/;
+     primero con git, que sirve con repo privado, y si no por HTTP desde GAS_DATOS_URL).
   3. Las estaciones SINTÉTICAS de data/ejemplo/, marcadas como demostración (aviso DEMO).
 
 Línea de tiempo: con hasta MAX_DIARIOS días de histórico, un corte por día; con más,
@@ -25,6 +26,7 @@ import datetime as dt
 import json
 import os
 import statistics
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -60,6 +62,7 @@ ENTIDADES = {
     "27": ("Tabasco", "TAB"), "28": ("Tamaulipas", "TAM"), "29": ("Tlaxcala", "TLA"), "30": ("Veracruz", "VER"),
     "31": ("Yucatán", "YUC"), "32": ("Zacatecas", "ZAC"),
 }
+PESO_PERIODO = {"anual": 12, "ene-sep": 9, "1S": 6, "ene-jun": 6, "1T": 3}
 POR_ISO = {iso: (cve, nombre) for cve, (nombre, iso) in ENTIDADES.items()}
 
 
@@ -132,6 +135,30 @@ def bajar_rama_datos(base=DATOS_URL, destino=CURADOS, timeout=60):
     return True
 
 
+def bajar_rama_datos_git(destino=CURADOS, rama="datos"):
+    """Si el proyecto es un clon de git, trae la rama `datos` con las credenciales del propio git
+    (sirve aunque el repositorio sea privado). Devuelve True si quedó completa."""
+    def git(*args):
+        return subprocess.run(["git", "-C", str(RAIZ), *args], capture_output=True, timeout=300)
+    try:
+        if git("fetch", "--quiet", "origin", rama).returncode != 0:
+            return False
+        bajados = {}
+        for nombre in ARCHIVOS_REMOTOS:
+            r = git("show", f"origin/{rama}:{nombre}")
+            if r.returncode == 0:
+                bajados[nombre] = r.stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if not {"manifest.json", "estaciones.geojson"} <= set(bajados):
+        return False
+    destino.mkdir(parents=True, exist_ok=True)
+    for nombre, contenido in bajados.items():
+        (destino / nombre).write_bytes(contenido)
+    print(f"Datos reales traídos de origin/{rama} con git: {', '.join(bajados)}")
+    return True
+
+
 def leer_manifest():
     ruta = CURADOS / "manifest.json"
     if not ruta.exists():
@@ -146,7 +173,7 @@ def cargar_estaciones(red=True, actualizar=False):
     real = CURADOS / "estaciones.geojson"
     origen = "local"
     if red and (actualizar or not real.exists()):
-        if bajar_rama_datos():
+        if bajar_rama_datos_git() or bajar_rama_datos():
             origen = "rama datos"
     if real.exists():
         ruta, demo = real, False
@@ -248,21 +275,27 @@ def cargar_huachicol():
         anuales = [r for r in filas if r["producto"] == producto and r["periodo"] == "anual"]
         if not anuales:
             continue
-        anio = max(int(r["anio"]) for r in anuales)
-        sel = [r for r in anuales if int(r["anio"]) == anio]
-        for r in sel:
-            nombre = ENTIDADES[r["cve_ent"].zfill(2)][0]
-            por_estado[nombre][producto] = {"tomas": int(r["tomas_reportadas"]), "anio": anio, "periodo": "anual",
-                                            "fuente": r["fuente"], "url": r["url"]}
+        # El año con más estados reportados (empate: el más reciente), no simplemente el último:
+        # una cifra nueva de un solo estado dejaría el mapa casi vacío.
+        cobertura = Counter(int(r["anio"]) for r in {(r["anio"], r["cve_ent"]): r for r in anuales}.values())
+        anio = max(cobertura, key=lambda a: (cobertura[a], a))
+        sel = {}
+        for r in anuales:            # primera fila por estado = fuente preferida; no se suman fuentes
+            if int(r["anio"]) == anio:
+                sel.setdefault(r["cve_ent"].zfill(2), r)
+        for cve, r in sel.items():
+            por_estado[ENTIDADES[cve][0]][producto] = {"tomas": int(r["tomas_reportadas"]), "anio": anio, "periodo": "anual",
+                                                       "fuente": r["fuente"], "url": r["url"]}
         resumen[producto] = {"anio": anio, "periodo": "anual", "estados_con_dato": len(sel),
-                             "suma_reportada": sum(int(r["tomas_reportadas"]) for r in sel),
-                             "fuentes": sorted({r["fuente"] for r in sel})}
+                             "suma_reportada": sum(int(r["tomas_reportadas"]) for r in sel.values()),
+                             "fuentes": sorted({r["fuente"] for r in sel.values()})}
 
     cabeceras = {r["cve_mun"].zfill(5): r for r in leer_csv(CRUDOS / "municipios_cabecera_ref.csv")}
     ultimos = {}
     for r in leer_csv(MANUAL / "huachicol_municipios.csv"):
         clave = r["cve_mun"].zfill(5)
-        llave = (int(r["anio"]), r["periodo"])
+        # el dato más reciente; dentro del año, el periodo más largo (anual > ene-sep > 1S > 1T)
+        llave = (int(r["anio"]), PESO_PERIODO.get(r["periodo"], 0), r["producto"] != "total_no_desglosado")
         if clave not in ultimos or llave > ultimos[clave][0]:
             ultimos[clave] = (llave, r)
     municipios = []

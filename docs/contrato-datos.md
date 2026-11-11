@@ -63,6 +63,10 @@ recibe las propiedades más `lat`/`lon`; para convertir: `{**f["properties"], "l
 
 - Nunca hay puntos, ductos ni coordenadas: solo conteos por estado o municipio, con fuente y periodo.
 - Periodos distintos (anual, 1S, 1T) no se suman; `pipeline.huachicol` se niega a mezclarlos.
+- Si dos fuentes reportan el mismo lugar y periodo (Pemex, IGAVIM y la prensa no siempre coinciden),
+  vale la primera fila del CSV y las demás quedan en `alternativas`; nunca se suman.
+- `producto`: `petroliferos`, `gas_lp` o `total_no_desglosado` (la fuente no separa gasolina/diésel de gas LP).
+- Las coropletas usan el año anual con más estados reportados, no el último con cualquier dato.
 - Los insumos están en `data/manual/huachicol_estados.csv` y `huachicol_municipios.csv`. Las claves
   municipales se capturaron a mano: al generar la coropleta municipal se avisa si alguna no existe
   en los polígonos del INEGI.

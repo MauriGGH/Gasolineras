@@ -87,7 +87,8 @@ const NOMBRES = Object.keys(E);
 const ULT = FECHAS.length - 1;
 const COL = Object.fromEntries(CRUDO.columnas.map((c,i) => [c,i]));
 const EST = CRUDO.filas.map((f,i) => ({ i, permiso:f[COL.permiso], nombre:f[COL.nombre], marca:f[COL.marca], lat:f[COL.lat], lon:f[COL.lon],
-  entidad:f[COL.entidad], horario:f[COL.horario], precios:{regular:f[COL.regular], premium:f[COL.premium], diesel:f[COL.diesel]} }));
+  entidad:f[COL.entidad], horario:f[COL.horario], evitar:COL.evitar !== undefined && !!f[COL.evitar],
+  precios:{regular:f[COL.regular], premium:f[COL.premium], diesel:f[COL.diesel]} }));
 const POR_PERMISO = new Map(EST.map(e => [e.permiso, e]));
 const NOM_PROD = { regular:"Regular", premium:"Premium", diesel:"Diésel" };
 const fechaTxt = f => /^\d{4}-\d{2}-\d{2}$/.test(f) ? new Date(f+"T12:00").toLocaleDateString("es-MX", {day:"numeric", month:"short", year:"numeric"}) : f;
@@ -136,6 +137,24 @@ METRICAS.estaciones = { titulo:"Gasolineras por entidad", rampa:rampaFria, asc:f
   escala:d3.scaleSqrt().domain([0,maxEst]).range([0,1]).clamp(true), valor:e => e.estaciones, texto:v => fmt(v), min:"0", max:fmt(maxEst) };
 METRICAS.tomas = { titulo:`Tomas clandestinas reportadas · ${huach ? huach.anio : ""} (referencia)`, rampa:rampaCalor, asc:false,
   escala:d3.scaleSqrt().domain([0,maxTomas]).range([0,1]).clamp(true), valor:e => tomas(e), texto:v => fmt(v), min:"0", max:fmt(maxTomas) };
+const tomasGas = e => e.huachicol?.gas_lp?.tomas, huachGas = NAC.huachicol?.gas_lp;
+const maxTomasGas = d3.max(NOMBRES, n => tomasGas(E[n])) || 1;
+METRICAS.tomas_gas = { titulo:`Tomas en ductos de gas LP · ${huachGas ? huachGas.anio : ""} (referencia)`, rampa:rampaCalor, asc:false,
+  escala:d3.scaleSqrt().domain([0,maxTomasGas]).range([0,1]).clamp(true), valor:e => tomasGas(e), texto:v => fmt(v), min:"0", max:fmt(maxTomasGas) };
+const maxPemex = d3.max(NOMBRES, n => E[n].estaciones ? E[n].pct_pemex : null) || 100;
+METRICAS.pemex = { titulo:"Gasolineras Pemex · % del total de la entidad", rampa:rampaFria, asc:false,
+  escala:d3.scaleLinear().domain([0,maxPemex]).range([0,1]).clamp(true), valor:e => e.estaciones ? e.pct_pemex : null,
+  texto:v => fmt1(v) + " %", min:"0 %", max:fmt1(maxPemex) + " %" };
+METRICAS.brecha = { titulo:"Premium − regular · diferencia promedio MXN/l", rampa:rampaCalor, asc:true, serie:true,
+  escala:(() => { const v = NOMBRES.map(n => brechaEnt(E[n], ULT)).filter(hay); const a = d3.min(v) ?? 0, b = d3.max(v) ?? 1;
+    return d3.scaleLinear().domain([a, b === a ? a + 0.01 : b]).range([0,1]).clamp(true); })(),
+  valor:(e,f) => brechaEnt(e,f), texto:v => pesos(v), min:"menor", max:"mayor" };
+function brechaEnt(e, f){ const a = precioEnt(e,"premium",f), b = precioEnt(e,"regular",f); return hay(a) && hay(b) ? a - b : null; }
+// Botones de los indicadores extra (sin tocar index.html): se agregan al segundo grupo
+[["pemex","% Pemex"],["brecha","Premium − regular"],["tomas_gas","Tomas gas LP (ref.)"]].forEach(([m, rot]) => {
+  const g = $("seg-metrica-b"); if(!g || g.querySelector(`[data-m="${m}"]`)) return;
+  const b = document.createElement("button"); b.type = "button"; b.dataset.m = m; b.setAttribute("aria-pressed","false"); b.textContent = rot;
+  g.append(b); g.style.gridTemplateColumns = `repeat(${Math.min(3, g.children.length)}, 1fr)`; });
 const SIN_COLOR = "#161d29";                        // entidad sin dato: gris neutro, fuera de la rampa
 const M = () => METRICAS[estado.metrica];
 const prodActual = () => esPrecio(estado.metrica) ? estado.metrica : "regular";
@@ -270,6 +289,7 @@ function dibujar(){
   EST.forEach(e => e.p = proy([e.lon, e.lat]));
   const pe = gEst.selectAll("circle").data(EST, d => d.i).join("circle")
     .attr("class","est").attr("cx", d => d.p[0]).attr("cy", d => d.p[1]).attr("r", rEst()).attr("fill", d => colorMarca(d.marca))
+    .style("stroke", d => d.evitar ? "#ff4130" : null).style("stroke-width", d => d.evitar ? 1.6 : null)
     .on("pointermove", (ev,d) => tipEst(ev,d)).on("pointerleave", ocultarTip)
     .on("click", (ev,d) => { ev.stopPropagation(); if(eligiendo(ev)) return; clicEstacion(d); });
   if(primera && !sinMovimiento) pe.style("opacity",0).transition().delay(d => 1500 + (d.p[1]/h)*500).duration(300).style("opacity",null);
@@ -317,7 +337,9 @@ function pintar(){
     });
 
   gEst.style("display", estado.capas.estaciones ? null : "none");
-  gEst.selectAll("circle").classed("fuera-marca", d => !!estado.marca && d.marca !== estado.marca)
+  // en un indicador de precio, las que no venden ese producto se atenúan
+  const prodVista = esPrecio(estado.metrica) ? estado.metrica : null;
+  gEst.selectAll("circle").classed("fuera-marca", d => (!!estado.marca && d.marca !== estado.marca) || (!!prodVista && !hay(d.precios[prodVista])))
     .classed("en-sel", d => d.entidad === estado.sel || d.entidad === estado.cmp);
   gFocos.style("display", estado.capas.focos ? null : "none");
   gRet.style("display", estado.capas.ret ? null : "none");
@@ -490,7 +512,7 @@ function tip(ev, n){
 function tipEst(ev, d){
   mostrarTip(ev, `<strong>${esc(d.nombre)}</strong><span class="punto-marca" style="background:${colorMarca(d.marca)}"></span>${esc(d.marca)} · ${esc(d.entidad ?? "")}<br>
     <span class="num">${PRODUCTOS.map(p => `${NOM_PROD[p][0]} ${con(d.precios[p], pesos)}`).join(" · ")}</span><br>
-    <small>${esc(d.permiso)}${d.horario ? " · " + esc(d.horario) : ""}</small>`);
+    <small>${esc(d.permiso)}${d.horario ? " · " + esc(d.horario) : ""}</small>${d.evitar ? `<br><small class="rojo">Profeco: no despacha litros completos o se negó a verificación</small>` : ""}`);
 }
 function tipFoco(ev, m){
   mostrarTip(ev, `<strong>${m.municipio.toUpperCase()}</strong>${m.entidad}<br>
@@ -779,11 +801,18 @@ function clicEstacion(d){
 
 /* ================= 7. HERRAMIENTAS ================= */
 /* ---------- ranking ---------- */
+// Flecha de cambio contra el corte anterior (solo indicadores con serie y si hay corte previo)
+function rankVar(m, n){
+  if(!m.serie || estado.f < 1) return "";
+  const v = variacion(m.valor(E[n], estado.f), m.valor(E[n], estado.f - 1));
+  return v === null || Math.abs(v) < 0.05 ? "" : ` <small class="${v<0?"baja":"sube"} num">${v<0?"▼":"▲"}${fmt1(Math.abs(v))}%</small>`;
+}
 function ranking(){
   const m = M(), filas = ordenados().map(n => ({n, v:val(n)}));
   const vs = filas.map(r => r.v).filter(hay), lo = d3.min(vs) ?? 0, hi = d3.max(vs) ?? 1;
   const largo = v => m.asc ? (hi > lo ? .15 + .85*(v-lo)/(hi-lo) : 1) : (hi ? v/hi : 0);
-  $("rank-nota").textContent = (m.asc ? "De la más barata a la más cara. " : "") + "Clic fija la entidad · Mayús + clic la compara con la fijada.";
+  $("rank-nota").textContent = (m.asc ? "De la más barata a la más cara. " : "") + (m.serie && estado.f > 0 ? `Flechas: cambio contra ${fechaCorta(FECHAS[estado.f-1])}. ` : "")
+    + "Clic fija la entidad · Mayús + clic la compara con la fijada.";
   const ol = d3.select("#rank"), antes = new Map();
   ol.selectAll("li").each(function(d){ antes.set(d.n, this.offsetTop); });
   const li = ol.selectAll("li").data(filas, d => d.n)
@@ -791,7 +820,7 @@ function ranking(){
   li.select("button")
     .attr("aria-current", d => d.n === estado.sel ? "true" : null)
     .classed("cmp", d => d.n === estado.cmp)
-    .html((d,i) => `<i class="num">${String(i+1).padStart(2,"0")}</i><span>${d.n}</span><span class="num">${con(d.v, m.texto)}</span>
+    .html((d,i) => `<i class="num">${String(i+1).padStart(2,"0")}</i><span>${d.n}${rankVar(m, d.n)}</span><span class="num">${con(d.v, m.texto)}</span>
       <u style="width:calc(100% - 38px);transform:scaleX(${hay(d.v) ? Math.max(0, Math.min(1,largo(d.v))) : 0});background:${hay(d.v) ? m.rampa(m.escala(d.v)) : SIN_COLOR}"></u>`)
     .on("click", (ev,d) => seleccionar(d.n, ev.shiftKey));
   if(!sinMovimiento && vistaActual() === "ranking") li.each(function(d){
@@ -801,12 +830,18 @@ function ranking(){
 }
 
 /* ---------- marcas: al elegir una se resaltan sus estaciones y las entidades donde domina ---------- */
+const precioMarca = (s, p, f = estado.f) => hay(s.serie?.[p]?.[f]) ? s.serie[p][f] : (f === ULT ? s.precio[p] : null);
+function varMarca(s){
+  const p = prodActual(); if(estado.f < 1) return "";
+  const v = variacion(precioMarca(s,p), precioMarca(s,p,estado.f-1));
+  return v === null || Math.abs(v) < 0.05 ? "" : ` · <span class="${v<0?"baja":"sube"}">${v<0?"▼":"▲"}${fmt1(Math.abs(v))}% ${NOM_PROD[p].toLowerCase()}</span>`;
+}
 function modelos(){
   const tope = d3.max(DATOS.marcas, s => s.estaciones) || 1;
   $("modelos").innerHTML = DATOS.marcas.map((s,i) => `
     <button type="button" class="mod" data-s="${esc(s.marca)}" aria-pressed="${estado.marca===s.marca}">
       <i class="num">${String(i+1).padStart(2,"0")}</i>${Siluetas.plana("bomba")}
-      <span><span class="punto-marca" style="background:${colorMarca(s.marca)}"></span>${esc(s.marca)} <small>${PRODUCTOS.map(p => `${NOM_PROD[p][0]} ${con(s.precio[p], pesos)}`).join(" · ")}</small></span>
+      <span><span class="punto-marca" style="background:${colorMarca(s.marca)}"></span>${esc(s.marca)} <small>${PRODUCTOS.map(p => `${NOM_PROD[p][0]} ${con(precioMarca(s,p), pesos)}`).join(" · ")}${varMarca(s)}${s.profeco_evitar ? ` · <span class="rojo">${fmt(s.profeco_evitar)} Profeco</span>` : ""}</small></span>
       <span class="num">${fmt(s.estaciones)}</span><u style="transform:scaleX(${s.estaciones/tope});animation-delay:${i*40}ms;background:${colorMarca(s.marca)}"></u></button>`).join("");
   document.querySelectorAll(".mod").forEach(b => b.onclick = () => ponerMarca(estado.marca === b.dataset.s ? null : b.dataset.s));
   ponerMarca(estado.marca);
@@ -1156,7 +1191,7 @@ function lineaTiempo(){
   const solo = !M().serie || FECHAS.length < 2;
   $("anio").disabled = solo; $("play").disabled = solo;
   const nota = FECHAS.length < 2 ? `Solo hay un corte de precios (${fechaTxt(FECHAS[ULT])}). El histórico crece con cada corrida diaria del pipeline.`
-    : !M().serie ? "Este indicador no cambia por fecha." : `${FECHAS.length} cortes diarios de precio. Las barras son el promedio nacional de regular.`;
+    : !M().serie ? "Este indicador no cambia por fecha." : `${FECHAS.length} cortes ${DATOS.tipo_corte === "semanal" ? "semanales (promedio de cada semana)" : "diarios"} de precio. Las barras son el promedio nacional de regular.`;
   $("nota-anio").textContent = nota; $("nota-metrica").textContent = nota;
 }
 function alternarFranja(abrir = !ui.franja){
@@ -1172,6 +1207,7 @@ $("franja-cerrar").onclick = () => { alternarFranja(false); $("h-tiempo").focus(
 
 function refrescar(){
   pintar(); armarHolo(); ranking(); cifraNacional(); nacional(); expediente();
+  if(ui.panel === "marcas") modelos();          // precios y cambios por marca siguen la fecha elegida
   leyenda(); aviso(); lineaTiempo(); pintarPatrulla(); animarCifras();
 }
 
