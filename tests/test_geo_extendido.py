@@ -253,3 +253,13 @@ def test_indice_areas_respeta_huecos():
     assert idx.clave_de((19.5, -98.5)) == "01002"
     assert idx.area_de((19.5, -98.5)).nombre == "Enclave"
     assert idx.clave_de((25, -100)) is None
+
+
+def test_zonas_de_referencia_por_estado_con_fixture():
+    import json
+    estados = json.load(open("tests/fixtures/geo/estados.geojson", encoding="utf-8"))
+    f = estados["features"][0]
+    fc = {"type": "FeatureCollection",
+          "features": [{**f, "properties": {**f["properties"], "tomas_reportadas": 50}}]}
+    (z,) = zonas_de_referencia(fc, campo_clave="CVE_ENT")
+    assert z.id == f["properties"]["CVE_ENT"] and z.nombre == f["properties"]["NOMGEO"]

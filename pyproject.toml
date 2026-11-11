@@ -8,9 +8,9 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 vrp = ["ortools>=9.10"]
+api = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "httpx>=0.27"]
 # Opcional: similitud de nombres más precisa en el cruce CNE/OSM/DENUE (sin ella se usa difflib)
 datos = ["rapidfuzz>=3"]
-api = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "httpx>=0.27"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -20,8 +20,8 @@ pythonpath = ["."]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["geo*", "pipeline*", "routing*"]
+[tool.setuptools]
+packages = ["pipeline", "geo", "routing"]
 
 [tool.setuptools.package-data]
 routing = ["static/*.html"]

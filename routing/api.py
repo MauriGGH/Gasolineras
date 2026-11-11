@@ -39,7 +39,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .cercanas import gasolineras_cercanas
-from .estaciones import indice_por_defecto
+from .estaciones import indice_por_defecto, permisos_a_evitar
 from .flotilla import Flotilla
 from .motor import obtener_motor
 from .recarga import Vehiculo, planear_viaje
@@ -106,6 +106,7 @@ class RecargasIn(RutaIn):
     costo_parada: float = 30.0
     minutos_carga: float = 8.0
     evitar: list[str] = []
+    evitar_profeco: bool = Field(True, description="excluir estaciones de evitar_permisos.json del pipeline")
 
 
 class PedidoIn(BaseModel):
@@ -212,7 +213,8 @@ def ruta(body: RutaIn):
 def ruta_recargas(body: RecargasIn):
     return planear_viaje([tuple(p) for p in body.puntos], body.vehiculo.a_vehiculo(), motor(), indice(),
                          objetivo=body.objetivo, corredor_km=body.corredor_km, costo_parada=body.costo_parada,
-                         minutos_carga=body.minutos_carga, evitar=set(body.evitar))
+                         minutos_carga=body.minutos_carga,
+                         evitar=set(body.evitar) | (set(permisos_a_evitar()) if body.evitar_profeco else set()))
 
 
 @app.post("/ruta/surtido")

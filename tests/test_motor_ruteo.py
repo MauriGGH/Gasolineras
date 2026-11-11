@@ -145,6 +145,10 @@ def test_viaje_imposible_explica_motivo(motor, indice):
 
 
 # ---------- VRP ----------
+requiere_ortools = pytest.mark.skipif(not __import__("routing.vrp").vrp._ortools_disponible(), reason="sin OR-Tools")
+
+
+@requiere_ortools
 def test_vrp_respeta_capacidades_y_ventanas(motor, indice):
     est_ = [e for e, _ in indice.en_radio((19.6, -99.4), 80)][:12]
     pedidos = [Pedido(e["permiso"], (e["lat"], e["lon"]), 6000) for e in est_]
@@ -163,6 +167,7 @@ def test_vrp_respeta_capacidades_y_ventanas(motor, indice):
     assert llegada <= 90
 
 
+@requiere_ortools
 def test_vrp_deja_fuera_lo_que_no_cabe(motor):
     pedidos = [Pedido("GRANDE", (19.6, -99.2), 50000), Pedido("CHICO", (19.5, -99.2), 5000)]
     r = planear_flota_surtido(CDMX, pedidos, [Pipa("P1", 20000)], motor, segundos_busqueda=1, incluir_geometria=False)
