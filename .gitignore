@@ -5,6 +5,7 @@
 .venv/
 __pycache__/
 data/curated/
+data/geo/
 data/osm/
 data/raw/
 datos/procesados/

@@ -17,13 +17,16 @@ import xml.etree.ElementTree as ET
 
 from geo.distancia import haversine_km
 
-from .marcas import normalizar_marca
+from .marcas import normalizar_marca, similitud_nombre
 
 # México continental + islas, para descartar coordenadas basura (0,0, lat/lon invertidas...)
 LIMITES_MX = {"lat": (14.3, 32.8), "lon": (-118.7, -86.5)}
 RANGO_PRECIO = (12.0, 40.0)  # MXN por litro; fuera de esto se marca como dudoso
 PRODUCTOS = {"regular", "premium", "diesel"}
 RADIO_MATCH_KM = 0.075
+# Segundo intento: hasta 200 m si el nombre se parece mucho (coordenadas desplazadas en OSM/DENUE).
+RADIO_MATCH_NOMBRE_KM = 0.2
+SIMILITUD_MIN = 0.8
 
 
 def leer_cne_estaciones(ruta: pathlib.Path) -> dict[str, dict]:
@@ -104,16 +107,27 @@ def _indice_rejilla(puntos: list[dict], celda: float = 0.01) -> dict:
     return idx
 
 
-def _mas_cercano(p: dict, idx: dict, celda: float = 0.01) -> dict | None:
+def _mas_cercano(p: dict, idx: dict, celda: float = 0.01, nombre: str | None = None,
+                 campos_nombre: tuple[str, ...] = ()) -> dict | None:
+    """Punto más cercano a <= 75 m; si no hay, el de nombre más parecido a <= 200 m."""
     ci, cj = int(p["lat"] / celda), int(p["lon"] / celda)
-    mejor, mejor_d = None, RADIO_MATCH_KM
+    candidatos = []
     for di in (-1, 0, 1):
         for dj in (-1, 0, 1):
             for q in idx.get((ci + di, cj + dj), []):
                 d = haversine_km((p["lat"], p["lon"]), (q["lat"], q["lon"]))
-                if d <= mejor_d:
-                    mejor, mejor_d = q, d
-    return mejor
+                if d <= RADIO_MATCH_NOMBRE_KM:
+                    candidatos.append((d, q))
+    if not candidatos:
+        return None
+    d, q = min(candidatos, key=lambda t: t[0])
+    if d <= RADIO_MATCH_KM:
+        return q
+    if not nombre or not campos_nombre:
+        return None
+    sim, q = max(((max(similitud_nombre(nombre, c.get(k)) for k in campos_nombre), c) for _, c in candidatos),
+                 key=lambda t: t[0])
+    return q if sim >= SIMILITUD_MIN else None
 
 
 def integrar(cne_est: dict[str, dict], cne_precios: dict[str, dict], osm: list[dict], denue: list[dict]) -> tuple[list[dict], dict]:
@@ -136,7 +150,8 @@ def integrar(cne_est: dict[str, dict], cne_precios: dict[str, dict], osm: list[d
             reporte["sin_precio"] += 1
         dudosos = [k for k, v in precios.items() if not RANGO_PRECIO[0] <= v <= RANGO_PRECIO[1]]
         reporte["precio_dudoso"] += bool(dudosos)
-        o, d = _mas_cercano(e, idx_osm), _mas_cercano(e, idx_denue)
+        o = _mas_cercano(e, idx_osm, nombre=e["nombre"], campos_nombre=("name", "operator", "brand"))
+        d = _mas_cercano(e, idx_denue, nombre=e["nombre"], campos_nombre=("nombre", "razon_social"))
         reporte["match_osm"] += o is not None
         reporte["match_denue"] += d is not None
         marca = normalizar_marca((o or {}).get("brand"), e["nombre"], (o or {}).get("name"),
@@ -160,6 +175,21 @@ def a_geojson(estaciones: list[dict]) -> dict:
         for e in estaciones]}
 
 
+def escribir_historico(ruta: pathlib.Path, fecha: str, estaciones: list[dict]) -> None:
+    """Agrega los precios del día al histórico. Si la fecha ya estaba (re-corrida), la reemplaza."""
+    filas = []
+    if ruta.exists():
+        with ruta.open(newline="", encoding="utf-8") as f:
+            filas = [r for r in csv.DictReader(f) if r["fecha"] != fecha]
+    for e in estaciones:
+        for producto, precio in sorted(e["precios"].items()):
+            filas.append({"fecha": fecha, "permiso": e["permiso"], "producto": producto, "precio": precio})
+    with ruta.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["fecha", "permiso", "producto", "precio"])
+        w.writeheader()
+        w.writerows(filas)
+
+
 def main(carpeta_raw: str) -> None:
     raw = pathlib.Path(carpeta_raw)
     fecha = raw.name
@@ -172,15 +202,7 @@ def main(carpeta_raw: str) -> None:
     estaciones, reporte = integrar(cne_est, cne_precios, osm, denue)
 
     (salida / "estaciones.geojson").write_text(json.dumps(a_geojson(estaciones), ensure_ascii=False), encoding="utf-8")
-    historico = salida / "precios_historico.csv"
-    nuevo = not historico.exists()
-    with historico.open("a", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        if nuevo:
-            w.writerow(["fecha", "permiso", "producto", "precio"])
-        for e in estaciones:
-            for producto, precio in e["precios"].items():
-                w.writerow([fecha, e["permiso"], producto, precio])
+    escribir_historico(salida / "precios_historico.csv", fecha, estaciones)
     (salida / f"calidad_{fecha}.json").write_text(json.dumps(reporte, indent=2), encoding="utf-8")
     print(json.dumps(reporte, indent=2))
 

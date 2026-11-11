@@ -1,0 +1,46 @@
+# Baja el feed de la CNE (se publica ~18:00 CDMX) y OSM, corre el pipeline y publica
+# data/curated/ en la rama `datos` (el front puede leerla desde raw.githubusercontent.com).
+# El histórico de precios se conserva porque se recupera de esa misma rama antes de correr.
+name: Pipeline diario
+on:
+  schedule:
+    - cron: "0 1 * * *"   # 19:00 hora del centro de México
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: pipeline-diario
+jobs:
+  correr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[datos]"
+      - name: Recuperar histórico de la rama datos
+        run: |
+          mkdir -p data/curated
+          if git fetch origin datos --depth=1; then
+            git show origin/datos:precios_historico.csv > data/curated/precios_historico.csv || true
+          fi
+      - name: Ingesta y transformación
+        run: python -m pipeline.correr --descargar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: curated-${{ github.run_id }}
+          path: data/curated/
+          retention-days: 14
+      - name: Publicar en la rama datos
+        run: |
+          cp -r data/curated /tmp/curated
+          git config user.name "pipeline-bot"
+          git config user.email "pipeline-bot@users.noreply.github.com"
+          if git fetch origin datos; then git checkout -B datos origin/datos; else git checkout --orphan datos; fi
+          git rm -rf -q . || true
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r /tmp/curated/. .
+          git add -A
+          git commit -m "Datos $(date -u +%F)" || echo "Sin cambios"
+          git push origin datos
