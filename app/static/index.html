@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ojo de Dios Robo Vehicular</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- ?v= obliga al navegador a pedir la versión nueva cuando cambian estos archivos; súbelo al modificarlos -->
+<link rel="stylesheet" href="/static/estilos.css?v=2">
+</head>
+<body>
+<!-- Secuencia de arranque: cada línea reporta una comprobación real -->
+<div class="arranque" id="arranque" role="status" aria-label="Cargando datos">
+  <div class="arr-caja">
+    <svg class="arr-iris" viewBox="0 0 120 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="56" class="a1"/><circle cx="60" cy="60" r="42" class="a2"/>
+      <circle cx="60" cy="60" r="27" class="a3"/><circle cx="60" cy="60" r="8" class="a4"/>
+      <path d="M60 0v18M60 102v18M0 60h18M102 60h18" class="a5"/>
+    </svg>
+    <h1>OJO DE DIOS <span>/ ROBO VEHICULAR MX</span></h1>
+    <pre id="arr-log"></pre>
+    <p class="nota" id="arr-nota">Clic para omitir</p>
+  </div>
+</div>
+
+<div class="app" id="app">
+
+  <!-- ===== EL MAPA: ocupa toda la ventana ===== -->
+  <main class="mapa" id="mapa">
+    <svg id="svg" role="img" aria-label="Mapa de México por entidad federativa, coloreado según el indicador elegido"></svg>
+    <div class="barrido" id="barrido"></div>
+    <div class="trama"></div>
+    <div class="aviso" id="aviso" hidden></div>
+    <div class="tip" id="tip"></div>
+  </main>
+
+  <!-- ===== Lo único que queda encima en reposo: nombre, una cifra y la barra ===== -->
+  <header class="marca">
+    <div class="marca-nombre">
+      <svg class="iris" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="15.5" class="i1"/><circle cx="17" cy="17" r="9" class="i2"/>
+        <circle cx="17" cy="17" r="3.2" class="i3"/><path d="M17 0v6M17 28v6M0 17h6M28 17h6" class="i1"/>
+      </svg>
+      <h1>OJO DE DIOS <span>/ ROBO VEHICULAR MX</span></h1>
+    </div>
+    <!-- La cifra nacional es un botón: abre el panorama nacional -->
+    <button type="button" class="cifra-nac" id="cifra-nac" aria-controls="panel" aria-expanded="false" data-etq="Panorama nacional">
+      <span class="eti" id="cifra-eti">Robos · nacional</span>
+      <b class="num" id="cifra-val">—</b>
+    </button>
+  </header>
+
+  <!-- Leyenda compacta y lectura del cursor -->
+  <div class="pie-mapa">
+    <div class="leyenda">
+      <div class="eti" id="ley-tit"></div>
+      <div class="rampa" id="ley-rampa"></div>
+      <div class="esc num"><span id="ley-min"></span><span id="ley-max"></span></div>
+      <div class="nota" id="ley-focos"></div>
+      <button type="button" class="chip-marca" id="chip-marca" hidden></button>
+    </div>
+    <div class="hud" id="hud"><span id="hud-pos">CURSOR <b>fuera del área</b></span><span id="hud-zoom">ZOOM <b>×1.0</b></span></div>
+  </div>
+
+  <!-- Cinta de datos: apagada al inicio, se enciende desde Capas -->
+  <div class="cinta" id="cinta-caja" aria-hidden="true" hidden><div class="cinta-txt" id="cinta"></div></div>
+
+  <!-- ===== Línea de tiempo: franja inferior desplegable ===== -->
+  <section class="franja" id="franja" aria-label="Línea de tiempo" inert>
+    <button type="button" class="btn-ico" id="play" aria-label="Reproducir la serie">▶</button>
+    <output id="anio-val" for="anio" class="num"></output>
+    <div class="carril">
+      <div class="anio-barras" id="anio-barras" aria-hidden="true"></div>
+      <input type="range" id="anio" step="1" aria-label="Año">
+      <div class="anio-marcas" id="anio-marcas" aria-hidden="true"></div>
+    </div>
+    <p class="nota" id="nota-anio"></p>
+    <button type="button" class="cerrar" id="franja-cerrar" aria-label="Cerrar la línea de tiempo">✕</button>
+  </section>
+
+  <!-- ===== Panel único: aquí aparece la herramienta elegida o el expediente ===== -->
+  <aside class="panel" id="panel" aria-labelledby="panel-tit" tabindex="-1" inert>
+    <header class="panel-cab">
+      <h2 id="panel-tit">Panel</h2>
+      <button type="button" class="cerrar" id="panel-cerrar" aria-label="Cerrar el panel">✕</button>
+    </header>
+    <div class="panel-cuerpo">
+
+      <section data-vista="indicador" hidden>
+        <div>
+          <div class="eti" id="eti-metrica">Indicador <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div>
+          <div class="seg tres" role="group" aria-labelledby="eti-metrica" id="seg-metrica">
+            <button type="button" id="m-robos" data-m="robos" aria-pressed="true">Robos</button>
+            <button type="button" id="m-viol" data-m="viol" aria-pressed="false">% viol.</button>
+            <button type="button" id="m-recu" data-m="recu" aria-pressed="false">% recup.</button>
+          </div>
+        </div>
+        <div>
+          <div class="eti" id="eti-vista">Vista <kbd>V</kbd></div>
+          <div class="seg dos" role="group" aria-labelledby="eti-vista" id="seg-vista">
+            <button type="button" id="v-coro" data-v="coro" aria-pressed="true">Coroplético</button>
+            <button type="button" id="v-burb" data-v="burb" aria-pressed="false">Burbujas</button>
+          </div>
+        </div>
+        <p class="nota" id="nota-metrica"></p>
+      </section>
+
+      <section data-vista="ranking" hidden>
+        <p class="nota">Clic fija la entidad · Mayús + clic la compara con la fijada.</p>
+        <ol class="rank" id="rank"></ol>
+      </section>
+
+      <section data-vista="submarcas" hidden>
+        <p class="nota" id="marca-msj" aria-live="polite"></p>
+        <div class="modelos" id="modelos"></div>
+      </section>
+
+      <section data-vista="capas" hidden>
+        <p class="nota">Lo que se dibuja sobre el mapa.</p>
+        <div class="chips" id="capas">
+          <button type="button" id="c-focos" data-c="focos" aria-pressed="true">Focos municipales</button>
+          <button type="button" id="c-etiq" data-c="etiq" aria-pressed="false">Etiquetas</button>
+          <button type="button" id="c-ret" data-c="ret" aria-pressed="true">Retícula geográfica</button>
+          <button type="button" id="c-barrido" data-c="barrido" aria-pressed="true">Barrido</button>
+          <button type="button" id="c-cinta" data-c="cinta" aria-pressed="false">Cinta de datos</button>
+        </div>
+      </section>
+
+      <section data-vista="buscar" hidden>
+        <div class="buscar">
+          <label class="eti" for="buscar">Entidad o municipio</label>
+          <input id="buscar" type="search" placeholder="Ej. Colima, Culiacán" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="nota" id="buscar-msj" aria-live="polite"></p>
+        <ul class="resultados" id="buscar-res"></ul>
+      </section>
+
+      <section data-vista="patrulla" hidden>
+        <p class="nota" id="patrulla-txt"></p>
+        <button type="button" class="btn-ancho" id="patrulla" aria-pressed="false"><span id="patrulla-rot">▶ Iniciar patrulla</span> <kbd>P</kbd></button>
+        <ol class="ruta" id="patrulla-ruta"></ol>
+      </section>
+
+      <section data-vista="fuentes" hidden>
+        <div class="texto">
+          <div class="eti">Fuente</div>
+          <p>AMIS, Centro Estadístico, «Robo de vehículos asegurados», reporte de diciembre de 2025 (entidades, municipios, submarcas).</p>
+          <p>Vehículo más robado por entidad: AMIS, difundido en prensa en marzo de 2026, sin periodo explícito.</p>
+        </div>
+        <div class="texto">
+          <div class="eti">Alcance y metodología</div>
+          <p>Solo vehículos asegurados; no equivale al total de robos denunciados que publica el SESNSP.</p>
+          <p>Son conteos absolutos: las entidades con más vehículos asegurados tienden a aparecer arriba. Falta normalizar por parque vehicular.</p>
+          <p>Recuperación mayor a 100 %: unidades robadas en una entidad y recuperadas en otra.</p>
+          <p>Límites estatales generalizados y ubicación de municipios referencial; no son cartografía oficial.</p>
+          <p>Las siluetas de vehículos son genéricas por tipo; no representan ningún modelo.</p>
+        </div>
+        <div class="texto">
+          <div class="eti">Proyección</div>
+          <p>Cónica Conforme de Lambert · paralelos 17.5° y 29.5° N · meridiano 102° O.</p>
+        </div>
+        <div class="texto">
+          <div class="eti">Estado de los datos</div>
+          <p><span class="vivo"></span><span id="estatus">Conectando con la API local</span></p>
+        </div>
+        <div class="texto">
+          <div class="eti">Cómo usarlo</div>
+          <p>Clic en una entidad para fijarla. Mayús + clic en otra para compararlas. La patrulla recorre sola las primeras del ranking.</p>
+          <dl class="atajos">
+            <dt><kbd>Esc</kbd></dt><dd>cierra el panel, suelta el objetivo, cierra la línea de tiempo</dd>
+            <dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></dt><dd>indicador</dd>
+            <dt><kbd>V</kbd></dt><dd>coroplético o burbujas</dd>
+            <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>año anterior o siguiente</dd>
+            <dt><kbd>espacio</kbd></dt><dd>reproducir la serie</dd>
+            <dt><kbd>C</kbd></dt><dd>comparar con otra entidad</dd>
+            <dt><kbd>P</kbd></dt><dd>patrulla automática</dd>
+            <dt><kbd>F</kbd></dt><dd>pantalla completa</dd>
+          </dl>
+        </div>
+      </section>
+
+      <section data-vista="nacional" id="nac" hidden></section>
+      <section data-vista="expediente" id="exp" aria-live="polite" hidden></section>
+    </div>
+  </aside>
+
+  <!-- ===== Barra de herramientas: un botón por función ===== -->
+  <nav class="barra" id="barra" role="toolbar" aria-label="Herramientas" aria-orientation="vertical">
+    <div class="htas">
+      <button type="button" class="hta" id="h-indicador" data-panel="indicador" data-etq="Indicador y vista" aria-label="Indicador y vista" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path class="lleno" d="M10 3a7 7 0 0 1 0 14z"/></svg></button>
+      <button type="button" class="hta" id="h-tiempo" data-etq="Línea de tiempo" aria-label="Línea de tiempo" aria-controls="franja" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg></button>
+      <button type="button" class="hta" id="h-ranking" data-panel="ranking" data-etq="Ranking de entidades" aria-label="Ranking de entidades" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h8M4 15h5"/></svg></button>
+      <button type="button" class="hta" id="h-submarcas" data-panel="submarcas" data-etq="Submarcas más robadas" aria-label="Submarcas más robadas" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 13v-2.4l2.2-.8L6.4 7h6l3 2.8 2.6.8V13h-1.6M6.6 13h6.6"/><circle cx="5" cy="13.4" r="1.6"/><circle cx="14.8" cy="13.4" r="1.6"/></svg></button>
+      <button type="button" class="hta" id="h-capas" data-panel="capas" data-etq="Capas" aria-label="Capas" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.6l7 3.6-7 3.6-7-3.6zM3 10l7 3.6 7-3.6M3 13.8l7 3.6 7-3.6"/></svg></button>
+      <button type="button" class="hta" id="h-buscar" data-panel="buscar" data-etq="Buscador" aria-label="Buscador" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2"/><path d="M13 13l4.2 4.2"/></svg></button>
+      <button type="button" class="hta" id="h-patrulla" data-panel="patrulla" data-etq="Patrulla automática" aria-label="Patrulla automática" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.2 10a6.2 6.2 0 1 1-2-4.6"/><path d="M14.6 2v3.8h-3.8"/><circle class="lleno" cx="10" cy="10" r="1.4"/></svg></button>
+      <button type="button" class="hta" id="h-fuentes" data-panel="fuentes" data-etq="Fuentes y metodología" aria-label="Fuentes y metodología" aria-controls="panel" aria-expanded="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 9.2v4.8M10 6v.8"/></svg></button>
+    </div>
+    <div class="zoom" role="group" aria-label="Cámara">
+      <button type="button" id="z-mas" aria-label="Acercar" data-etq="Acercar">+</button>
+      <button type="button" id="z-menos" aria-label="Alejar" data-etq="Alejar">−</button>
+      <button type="button" id="z-rst" aria-label="Ver todo el país" data-etq="Ver todo el país">⌂</button>
+      <button type="button" id="z-full" aria-label="Pantalla completa" data-etq="Pantalla completa">⛶</button>
+    </div>
+  </nav>
+</div>
+
+<script src="/static/vendor/d3.min.js"></script>
+<script src="/static/siluetas.js?v=2"></script>
+<script src="/static/app.js?v=2"></script>
+</body>
+</html>

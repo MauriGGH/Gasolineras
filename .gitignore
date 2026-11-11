@@ -1,8 +1,10 @@
-__pycache__/
+# salida generada por scripts/construir_datos.py
+*.egg-info/
 *.pyc
 .pytest_cache/
 .venv/
-data/raw/
+__pycache__/
 data/curated/
 data/osm/
-*.egg-info/
+data/raw/
+datos/procesados/
