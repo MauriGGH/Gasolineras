@@ -1,0 +1,14 @@
+[project]
+name = "app-gasolineras"
+version = "0.1.0"
+description = "Mapa de gasolineras en México: precios, rutas, paradas de recarga y geocercas"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+vrp = ["ortools>=9.10"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
