@@ -98,6 +98,18 @@
         "tomas_reportadas": 16,
         "fuente": "Infobae con datos IGAVIM/Pemex",
         "url": "https://www.infobae.com/mexico/2025/02/06/hidalgo-numero-uno-en-huachicoleo-en-mexico-pese-a-disminucion-de-tomas-clandestinas-en-2024/"
+      },
+      "13": {
+        "estado": "Hidalgo",
+        "tomas_reportadas": 7,
+        "fuente": "El Imparcial con datos de Pemex (transparencia)",
+        "url": "https://www.elimparcial.com/mexico/2026/04/19/cada-50-minutos-perforan-un-ducto-de-pemex-en-mexico-el-mapa-actual-del-robo-de-combustible-y-gas-lp/"
+      },
+      "11": {
+        "estado": "Guanajuato",
+        "tomas_reportadas": 8,
+        "fuente": "El Imparcial con datos de Pemex (transparencia)",
+        "url": "https://www.elimparcial.com/mexico/2026/04/19/cada-50-minutos-perforan-un-ducto-de-pemex-en-mexico-el-mapa-actual-del-robo-de-combustible-y-gas-lp/"
       }
     }
   }
