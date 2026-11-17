@@ -1,7 +1,7 @@
 {
   "version_contrato": "1",
-  "fecha_datos": "2026-11-16",
-  "generado": "2026-11-16T07:39:56+00:00",
+  "fecha_datos": "2026-11-17",
+  "generado": "2026-11-17T08:49:43+00:00",
   "pasos_omitidos": [
     "denue (sin denue.csv)",
     "municipios por polígono (sin data/geo/municipios.geojson)",
@@ -14,14 +14,14 @@
     "precios_agregados.json",
     "evitar_permisos.json",
     "huachicol_estados.json",
-    "calidad_2026-11-16.json"
+    "calidad_2026-11-17.json"
   ],
   "calidad": {
     "cne_total": 15044,
     "coordenadas_invalidas": 85,
-    "sin_precio": 1119,
-    "precio_dudoso": 11,
-    "match_osm": 8246,
+    "sin_precio": 1122,
+    "precio_dudoso": 10,
+    "match_osm": 8248,
     "match_denue": 0,
     "permiso_duplicado": 0,
     "municipio_por_denue": 0,
