@@ -31,8 +31,8 @@ PORTADA = {
     "profesor": "Armando Roman Gallardo Heredia",
     "alumno": "Mauricio Gerardo Gómez Hernández (23460330)",
     "sesion": "Sesión 46",
-    "entrega": "19 de noviembre de 2026",
-    "lugar": "Villa de Álvarez, Colima a 19 de noviembre de 2026.",
+    "entrega": "20 de noviembre de 2026",
+    "lugar": "Villa de Álvarez, Colima a 20 de noviembre de 2026.",
 }
 SALIDA = "Sesion_46_Gomez_Mauricio.pdf"
 NEGRO = colors.HexColor("#111111")
