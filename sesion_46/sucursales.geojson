@@ -14,6 +14,8 @@
 { "type": "Feature", "properties": { "id": "S09", "nombre": "Sucursal Chihuahua" }, "geometry": { "type": "Point", "coordinates": [ -106.0889, 28.6353 ] } },
 { "type": "Feature", "properties": { "id": "S10", "nombre": "Sucursal Oaxaca" }, "geometry": { "type": "Point", "coordinates": [ -96.7266, 17.0732 ] } },
 { "type": "Feature", "properties": { "id": "S11", "nombre": "Sucursal Veracruz" }, "geometry": { "type": "Point", "coordinates": [ -96.1342, 19.1738 ] } },
-{ "type": "Feature", "properties": { "id": "S12", "nombre": "Sucursal La Paz" }, "geometry": { "type": "Point", "coordinates": [ -110.3128, 24.1426 ] } }
+{ "type": "Feature", "properties": { "id": "S12", "nombre": "Sucursal La Paz" }, "geometry": { "type": "Point", "coordinates": [ -110.3128, 24.1426 ] } },
+{ "type": "Feature", "properties": { "id": "S13", "nombre": "Sucursal Colima" }, "geometry": { "type": "Point", "coordinates": [ -103.725, 19.2433 ] } },
+{ "type": "Feature", "properties": { "id": "S14", "nombre": "Sucursal Manzanillo" }, "geometry": { "type": "Point", "coordinates": [ -104.3158, 19.0522 ] } }
 ]
 }

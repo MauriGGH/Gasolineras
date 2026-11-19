@@ -1,4 +1,4 @@
-"""Genera sucursales.geojson: red ilustrativa de 12 sucursales en ciudades de México.
+"""Genera sucursales.geojson: red ilustrativa de 14 sucursales en ciudades de México.
 
 Son puntos de práctica (ids S01..S12), no estaciones reales del proyecto base.
 """
@@ -18,6 +18,8 @@ SUCURSALES = [
     ("S10", "Sucursal Oaxaca", 17.0732, -96.7266),
     ("S11", "Sucursal Veracruz", 19.1738, -96.1342),
     ("S12", "Sucursal La Paz", 24.1426, -110.3128),
+    ("S13", "Sucursal Colima", 19.2433, -103.7250),
+    ("S14", "Sucursal Manzanillo", 19.0522, -104.3158),
 ]
 
 if __name__ == "__main__":
