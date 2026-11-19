@@ -1,0 +1,19 @@
+{
+"type": "FeatureCollection",
+"name": "sucursales",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": "S01", "nombre": "Sucursal Ciudad de México" }, "geometry": { "type": "Point", "coordinates": [ -99.1332, 19.4326 ] } },
+{ "type": "Feature", "properties": { "id": "S02", "nombre": "Sucursal Guadalajara" }, "geometry": { "type": "Point", "coordinates": [ -103.3496, 20.6597 ] } },
+{ "type": "Feature", "properties": { "id": "S03", "nombre": "Sucursal Monterrey" }, "geometry": { "type": "Point", "coordinates": [ -100.3161, 25.6866 ] } },
+{ "type": "Feature", "properties": { "id": "S04", "nombre": "Sucursal Mérida" }, "geometry": { "type": "Point", "coordinates": [ -89.5926, 20.9674 ] } },
+{ "type": "Feature", "properties": { "id": "S05", "nombre": "Sucursal Tijuana" }, "geometry": { "type": "Point", "coordinates": [ -117.0382, 32.5149 ] } },
+{ "type": "Feature", "properties": { "id": "S06", "nombre": "Sucursal Cancún" }, "geometry": { "type": "Point", "coordinates": [ -86.8515, 21.1619 ] } },
+{ "type": "Feature", "properties": { "id": "S07", "nombre": "Sucursal Puebla" }, "geometry": { "type": "Point", "coordinates": [ -98.2063, 19.0414 ] } },
+{ "type": "Feature", "properties": { "id": "S08", "nombre": "Sucursal Querétaro" }, "geometry": { "type": "Point", "coordinates": [ -100.3899, 20.5888 ] } },
+{ "type": "Feature", "properties": { "id": "S09", "nombre": "Sucursal Chihuahua" }, "geometry": { "type": "Point", "coordinates": [ -106.0889, 28.6353 ] } },
+{ "type": "Feature", "properties": { "id": "S10", "nombre": "Sucursal Oaxaca" }, "geometry": { "type": "Point", "coordinates": [ -96.7266, 17.0732 ] } },
+{ "type": "Feature", "properties": { "id": "S11", "nombre": "Sucursal Veracruz" }, "geometry": { "type": "Point", "coordinates": [ -96.1342, 19.1738 ] } },
+{ "type": "Feature", "properties": { "id": "S12", "nombre": "Sucursal La Paz" }, "geometry": { "type": "Point", "coordinates": [ -110.3128, 24.1426 ] } }
+]
+}

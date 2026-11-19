@@ -1,0 +1,10 @@
+    id                     nombre  ...           consultado_utc  error
+0  S01  Sucursal Ciudad de México  ...  2026-11-19 01:17:42 UTC   None
+1  S02       Sucursal Guadalajara  ...  2026-11-19 01:17:42 UTC   None
+2  S03         Sucursal Monterrey  ...  2026-11-19 01:17:42 UTC   None
+3  S04            Sucursal Mérida  ...  2026-11-19 01:17:42 UTC   None
+4  S05           Sucursal Tijuana  ...  2026-11-19 01:17:42 UTC   None
+
+[5 rows x 9 columns]
+
+12/12 consultas correctas -> clima_sucursales.csv
