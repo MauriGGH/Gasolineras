@@ -1,17 +1,17 @@
 {
-  "cne_total": 15045,
+  "cne_total": 15046,
   "coordenadas_invalidas": 85,
   "sin_precio": 1119,
   "precio_dudoso": 10,
-  "match_osm": 8151,
+  "match_osm": 8254,
   "match_denue": 0,
   "permiso_duplicado": 0,
   "municipio_por_denue": 0,
   "municipio_por_poligono": 0,
-  "sin_municipio": 14960,
+  "sin_municipio": 14961,
   "profeco_filas": 0,
   "profeco_sin_estacion": 0,
   "profeco_estaciones": 0,
   "profeco_evitar": 0,
-  "estaciones_publicadas": 14960
+  "estaciones_publicadas": 14961
 }
